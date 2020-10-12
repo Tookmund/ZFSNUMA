@@ -1,5 +1,12 @@
 #!/bin/sh
-for i in pre post
+
+if [ -z $1 ]
+then
+	echo "Requires a Test File!"
+	exit 1
+fi
+
+for p in 0 1
 do
 	fio \
 		--readonly \
@@ -7,5 +14,5 @@ do
 		--rw=read \
 		--name="$1" \
 		"--filename=$1" \
-		--output "fio.$1.$i"
+		--output "fio.$p.$(basename "$1")"
 done
