@@ -6,7 +6,7 @@ then
 	exit 1
 fi
 
-for p in 0 1
+for p in pre post
 do
 	fio \
 		--readonly \
