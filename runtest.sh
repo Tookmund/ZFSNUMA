@@ -9,7 +9,6 @@ fi
 # https://stackoverflow.com/a/44248993
 NUMABIND=${PWD#"${PWD%?}"}
 NCTL="numactl -N $NUMABIND -m $NUMABIND "
-echo $NCTL
 for f in /tank/*
 do
 	$NCTL "$1" "$f"
