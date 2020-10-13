@@ -14,5 +14,5 @@ do
 		--rw=read \
 		--name="$1" \
 		"--filename=$1" \
-		--output "fio.$p.$(basename "$1")"
+		--output "fio.$(basename "$1").$p"
 done
