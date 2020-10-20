@@ -40,5 +40,5 @@ os.chdir(bound+node)
 subprocess.run(["numactl", "-N", node, "-m", node,
     "../../../"+script+".sh", "/tank/"+datafile], check=True)
 
-os.remove(testfile)
+os.remove("../../test-runs/"+testfile)
 subprocess.run(["reboot"])
