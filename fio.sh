@@ -14,7 +14,7 @@ do
 		--rw=read \
 		--name="$1" \
 		"--filename=$1" \
-		--write_bw_log \
-		--write_lat_log \
+		"--write_bw_log=$1.$p" \
+		"--write_lat_log=$1.$p" \
 		--output "fio.$(basename "$1").$p"
 done
