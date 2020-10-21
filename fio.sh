@@ -16,7 +16,5 @@ do
 		--rw=read \
 		--name "$NAME" \
 		--filename "$1" \
-		--write_bw_log "$NAME.$p" \
-		--write_lat_log "$NAME.$p" \
 		--output "fio.$NAME.$p"
 done
