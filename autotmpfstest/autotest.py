@@ -25,9 +25,9 @@ datafile = test[3]
 os.chdir("data")
 
 if bound == "U":
-    subprocess.run(["mount", "-t", "tmpfs", "-o", "size=13G", "/mnt"], check=True)
+    subprocess.run(["mount", "-t", "tmpfs", "-o", "size=13G", "tmpfs", "/mnt"], check=True)
 elif bound == "B":
-    subprocess.run(["mount", "-t", "tmpfs", "-o", "mpol=bind:1,size=13G", "/mnt"], check=True)
+    subprocess.run(["mount", "-t", "tmpfs", "-o", "mpol=bind:1,size=13G", "tmpfs", "/mnt"], check=True)
 
 try:
     os.mkdir(bound+node)
