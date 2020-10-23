@@ -4,6 +4,13 @@ import os
 import subprocess
 import sys
 
+
+def meminfo(what):
+    print(what)
+    for n in ["0", "1"]:
+        with open("/sys/devices/system/node/node"+n+"/meminfo") as f:
+            print(f.read())
+
 os.chdir("/home/jaadams/arctest/autoarctest/")
 
 testruns = os.listdir("test-runs")
@@ -14,6 +21,7 @@ if len(testruns) == 0:
 
 testfile = testruns[0]
 print(testfile)
+meminfo("Begin")
 
 test = testfile.split(".")
 bound = test[0]
@@ -27,8 +35,10 @@ if bound == "U":
     subprocess.run(["modprobe", "zfs"], check=True)
 elif bound == "B":
     subprocess.run(["./scripts/zfs.sh"], cwd="/home/jaadams/zfs", check=True)
+meminfo("Load ZFS")
 
 subprocess.run(["zpool", "import", "tank"], check=True)
+meminfo("Import tank ZPool")
 
 try:
     os.mkdir(bound+node)
@@ -39,6 +49,8 @@ os.chdir(bound+node)
 
 subprocess.run(["numactl", "-N", node, "-m", node,
     "../../../"+script+".sh", "/tank/"+datafile], check=True)
+
+meminfo("After Test")
 
 os.remove("../../test-runs/"+testfile)
 subprocess.run(["reboot"])
