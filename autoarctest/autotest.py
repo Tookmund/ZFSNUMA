@@ -21,7 +21,7 @@ node = test[1]
 script = test[2]
 datafile = test[3]
 
-os.chdir("data")
+os.chdir("newdata")
 
 if bound == "U":
     subprocess.run(["modprobe", "zfs"], check=True)
