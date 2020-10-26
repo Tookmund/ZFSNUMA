@@ -46,6 +46,8 @@ os.chdir(node)
 
 subprocess.run(["numactl", "-N", str(tmpfsnode), "-m", str(tmpfsnode),
     "../../../genfile.sh", "/mnt/"+datafile], check=True, stdout=subprocess.DEVNULL)
+meminfo("Create File")
+
 subprocess.run(["numactl", "-N", node, "-m", node,
     "../../../"+script+".sh", "/mnt/"+datafile], check=True)
 meminfo("After Test")
