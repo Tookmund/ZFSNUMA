@@ -1,16 +1,9 @@
 #!/bin/sh
 
-
-for b in U B
+for n in 0 1
 do
-	for n in 0 1
+	for f in 12K 128K 1M 500M 1G 2G 4G 8G 16G
 	do
-		for t in dd fio
-		do
-			for f in 12K 128K 1G 10G
-			do
-				touch "$b.$n.$t.$(basename "$f")"
-			done
-		done
+		touch "$n.onefio.$(basename "$f")"
 	done
 done

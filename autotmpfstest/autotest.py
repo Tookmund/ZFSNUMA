@@ -12,6 +12,8 @@ def meminfo(what):
         with open("/sys/devices/system/node/node"+n+"/meminfo") as f:
             print(f.read())
 
+tmpfsnode = 1
+
 os.chdir("/home/jaadams/arctest/autotmpfstest/")
 
 testruns = os.listdir("test-runs")
@@ -25,28 +27,25 @@ print(testfile)
 meminfo("Begin")
 
 test = testfile.split(".")
-bound = test[0]
-node = test[1]
-script = test[2]
-datafile = test[3]
+node = test[0]
+script = test[1]
+datafile = test[2]
 
 os.chdir("data")
 
-if bound == "U":
-    subprocess.run(["mount", "-t", "tmpfs", "-o", "size=13G", "tmpfs", "/mnt"], check=True)
-elif bound == "B":
-    subprocess.run(["mount", "-t", "tmpfs", "-o", "mpol=bind:1,size=13G", "tmpfs", "/mnt"], check=True)
+subprocess.run(["mount", "-t", "tmpfs", "-o", "mpol=bind:"+str(tmpfsnode)+",size=13G", "tmpfs", "/mnt"], check=True)
 
 meminfo("Mount tmpfs")
 
 try:
-    os.mkdir(bound+node)
+    os.mkdir(node)
 except FileExistsError:
     pass
 
-os.chdir(bound+node)
+os.chdir(node)
 
-subprocess.run(["../../../genfile.sh", "/mnt/"+datafile], check=True, stdout=subprocess.DEVNULL)
+subprocess.run(["numactl", "-N", str(tmpfsnode), "-m", str(tmpfsnode),
+    "../../../genfile.sh", "/mnt/"+datafile], check=True, stdout=subprocess.DEVNULL)
 subprocess.run(["numactl", "-N", node, "-m", node,
     "../../../"+script+".sh", "/mnt/"+datafile], check=True)
 meminfo("After Test")
