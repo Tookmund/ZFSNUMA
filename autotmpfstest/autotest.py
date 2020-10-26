@@ -52,6 +52,6 @@ subprocess.run(["numactl", "-N", node, "-m", node,
     "../../../"+script+".sh", "/mnt/"+datafile], check=True)
 meminfo("After Test")
 
+print(testfile, "Complete!", flush=True)
 os.remove("../../test-runs/"+testfile)
-time.sleep(5)
 subprocess.run(["reboot"])
