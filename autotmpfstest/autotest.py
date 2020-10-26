@@ -45,7 +45,7 @@ except FileExistsError:
 
 os.chdir(bound+node)
 
-subprocess.run(["../../../genfile.sh", "/mnt/"+datafile], check=True)
+subprocess.run(["../../../genfile.sh", "/mnt/"+datafile], check=True, stdout=subprocess.DEVNULL)
 subprocess.run(["numactl", "-N", node, "-m", node,
     "../../../"+script+".sh", "/mnt/"+datafile], check=True)
 meminfo("After Test")
