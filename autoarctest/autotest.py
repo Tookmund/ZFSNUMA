@@ -3,6 +3,7 @@
 import os
 import subprocess
 import sys
+import time
 
 
 def meminfo(what):
@@ -53,4 +54,5 @@ subprocess.run(["numactl", "-N", node, "-m", node,
 meminfo("After Test")
 
 os.remove("../../test-runs/"+testfile)
+time.sleep(5)
 subprocess.run(["reboot"])
