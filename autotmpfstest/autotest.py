@@ -33,7 +33,7 @@ datafile = test[2]
 
 os.chdir("data")
 
-subprocess.run(["mount", "-t", "tmpfs", "-o", "mpol=bind:"+str(tmpfsnode)+",size=17G", "tmpfs", "/mnt"], check=True)
+subprocess.run(["mount", "-t", "tmpfs", "-o", "mpol=bind:"+str(tmpfsnode)+",size=20G", "tmpfs", "/mnt"], check=True)
 
 meminfo("Mount tmpfs")
 
