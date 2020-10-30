@@ -1,11 +1,11 @@
 #!/bin/sh
 
 
-for b in U B
+for b in  B
 do
 	for n in 0 1
 	do
-		for t in dd fio
+		for t in fio
 		do
 			for f in /tank/*
 			do
