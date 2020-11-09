@@ -56,7 +56,7 @@ if bound == "O":
     os.chdir(bound)
     onode = "1" if node == "0" else "0"
     subprocess.run(["numactl", "-N", onode, "-m", onode,
-        "../../../"+script+".sh", "/tank/"+datafile], check=True)
+        "../../../../"+script+".sh", "/tank/"+datafile], check=True)
     os.chdir("..")
 
 subprocess.run(["numactl", "-N", node, "-m", node,
