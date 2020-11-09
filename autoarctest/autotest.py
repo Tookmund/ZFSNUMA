@@ -32,10 +32,10 @@ datafile = test[3]
 
 os.chdir("newdata")
 
-if bound == "U":
-    subprocess.run(["modprobe", "zfs"], check=True)
-elif bound == "B":
+if bound == "B":
     subprocess.run(["./scripts/zfs.sh"], cwd="/home/jaadams/zfs", check=True)
+else:
+    subprocess.run(["modprobe", "zfs"], check=True)
 meminfo("Load ZFS")
 
 subprocess.run(["zpool", "import", "tank"], check=True)
@@ -47,6 +47,17 @@ except FileExistsError:
     pass
 
 os.chdir(bound+node)
+
+if bound == "O":
+    try:
+        os.mkdir(bound)
+    except FileExistsError:
+        pass
+    os.chdir(bound)
+    onode = if node == 0: 1 else 0
+    subprocess.run(["numactl", "-N", onode, "-m", onode,
+        "../../../"+script+".sh", "/tank/"+datafile], check=True)
+    os.chdir("..")
 
 subprocess.run(["numactl", "-N", node, "-m", node,
     "../../../"+script+".sh", "/tank/"+datafile], check=True)

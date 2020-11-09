@@ -1,7 +1,7 @@
 #!/bin/sh
 
 
-for b in  B
+for b in  O
 do
 	for n in 0 1
 	do
