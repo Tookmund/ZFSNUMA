@@ -54,7 +54,7 @@ if bound == "O":
     except FileExistsError:
         pass
     os.chdir(bound)
-    onode = if node == 0: 1 else 0
+    onode = "1" if node == "0" else "0"
     subprocess.run(["numactl", "-N", onode, "-m", onode,
         "../../../"+script+".sh", "/tank/"+datafile], check=True)
     os.chdir("..")
