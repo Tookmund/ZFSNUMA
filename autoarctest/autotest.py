@@ -57,6 +57,7 @@ if bound == "O":
     onode = "1" if node == "0" else "0"
     subprocess.run(["numactl", "-N", onode, "-m", onode,
         "../../../../"+script+".sh", "/tank/"+datafile], check=True)
+    meminfo("After Opposite Node")
     os.chdir("..")
 
 subprocess.run(["numactl", "-N", node, "-m", node,
