@@ -70,4 +70,4 @@ meminfo("After Test")
 
 os.remove("../../test-runs/"+testfile)
 print(testfile, "Complete!", flush=True)
-#subprocess.run(["reboot"])
+subprocess.run(["reboot"])
