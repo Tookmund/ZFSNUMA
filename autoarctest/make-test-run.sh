@@ -8,7 +8,7 @@ do
 		do
 			for f in /tank/2-1G
 			do
-				i=1
+				i=0
 				while [ $i -ne 25 ]
 				do
 					touch "$b.$n.$t.$(basename "$f").$i"
