@@ -29,6 +29,9 @@ bound = test[0]
 node = test[1]
 script = test[2]
 datafile = test[3]
+nums = ""
+if len(test) > 4:
+    nums = test[4]
 
 os.chdir("newdata")
 
@@ -56,15 +59,15 @@ if bound == "O":
     os.chdir(bound)
     onode = "1" if node == "0" else "0"
     subprocess.run(["numactl", "-N", onode, "-m", onode,
-        "../../../../"+script+".sh", "/tank/"+datafile], check=True)
+        "../../../../"+script+".sh", "/tank/"+datafile, nums], check=True)
     meminfo("After Opposite Node")
     os.chdir("..")
 
 subprocess.run(["numactl", "-N", node, "-m", node,
-    "../../../"+script+".sh", "/tank/"+datafile], check=True)
+    "../../../"+script+".sh", "/tank/"+datafile, nums], check=True)
 
 meminfo("After Test")
 
 os.remove("../../test-runs/"+testfile)
 print(testfile, "Complete!", flush=True)
-subprocess.run(["reboot"])
+#subprocess.run(["reboot"])

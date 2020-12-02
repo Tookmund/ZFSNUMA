@@ -16,5 +16,5 @@ do
 		--rw=read \
 		--name "$NAME" \
 		--filename "$1" \
-		--output "fio.$NAME.$p"
+		--output "fio.$NAME.$p$2"
 done

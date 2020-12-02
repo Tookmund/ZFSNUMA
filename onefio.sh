@@ -14,4 +14,4 @@ fio \
 	--rw=read \
 	--name "$NAME" \
 	--filename "$1" \
-	--output "fio.$NAME"
+	--output "fio.$NAME$2"
