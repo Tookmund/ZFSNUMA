@@ -10,6 +10,7 @@ NAME="$(basename "$1")"
 
 fio \
 	--readonly \
+	--invalidate=false \
 	--ioengine=psync \
 	--rw=read \
 	--name "$NAME" \
