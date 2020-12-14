@@ -12,7 +12,7 @@ for p in pre post
 do
 	fio \
 		--readonly \
-		--invalidate=false \
+		--invalidate=0 \
 		--ioengine=psync \
 		--rw=read \
 		--name "$NAME" \
