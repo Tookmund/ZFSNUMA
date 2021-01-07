@@ -35,6 +35,9 @@ if len(test) > 4:
 
 os.chdir("newdata")
 
+# Unload modules to ensure consistent state for test
+subprocess.run(["./scripts/zfs.sh -u"], cwd="/home/jaadams/zfs", check=True)
+
 if bound == "B":
     subprocess.run(["./scripts/zfs.sh"], cwd="/home/jaadams/zfs", check=True)
 else:
