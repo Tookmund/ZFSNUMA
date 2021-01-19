@@ -1,0 +1,24 @@
+1-128K: (g=0): rw=read, bs=(R) 4096B-4096B, (W) 4096B-4096B, (T) 4096B-4096B, ioengine=psync, iodepth=1
+fio-3.25
+Starting 1 process
+
+1-128K: (groupid=0, jobs=1): err= 0: pid=3104: Tue Jan 19 06:08:48 2021
+  read: IOPS=32.0k, BW=125MiB/s (131MB/s)(128KiB/1msec)
+    clat (nsec): min=7636, max=51042, avg=9224.56, stdev=7641.66
+     lat (nsec): min=7812, max=52075, avg=9428.12, stdev=7794.15
+    clat percentiles (nsec):
+     |  1.00th=[ 7648],  5.00th=[ 7648], 10.00th=[ 7648], 20.00th=[ 7712],
+     | 30.00th=[ 7712], 40.00th=[ 7712], 50.00th=[ 7776], 60.00th=[ 7776],
+     | 70.00th=[ 7840], 80.00th=[ 8032], 90.00th=[ 8256], 95.00th=[ 9920],
+     | 99.00th=[50944], 99.50th=[50944], 99.90th=[50944], 99.95th=[50944],
+     | 99.99th=[50944]
+  lat (usec)   : 10=96.88%, 100=3.12%
+  cpu          : usr=0.00%, sys=0.00%, ctx=0, majf=0, minf=11
+  IO depths    : 1=100.0%, 2=0.0%, 4=0.0%, 8=0.0%, 16=0.0%, 32=0.0%, >=64=0.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     issued rwts: total=32,0,0,0 short=0,0,0,0 dropped=0,0,0,0
+     latency   : target=0, window=0, percentile=100.00%, depth=1
+
+Run status group 0 (all jobs):
+   READ: bw=125MiB/s (131MB/s), 125MiB/s-125MiB/s (131MB/s-131MB/s), io=128KiB (131kB), run=1-1msec
