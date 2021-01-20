@@ -10,10 +10,10 @@ NAME="$(basename "$1")"
 
 fio \
 	--readonly \
-	--pre_read=true \
+	--pre_read=1 \
 	--ioengine=psync \
 	--rw=read \
 	--name "$NAME" \
 	--filename "$1" \
-	--minimal \
+	--output-format=json \
 	--output "fio.$NAME$2"
