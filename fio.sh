@@ -17,5 +17,6 @@ do
 		--rw=read \
 		--name "$NAME" \
 		--filename "$1" \
+		--minimal \
 		--output "fio.$NAME.$p$2"
 done

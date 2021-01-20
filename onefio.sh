@@ -15,4 +15,5 @@ fio \
 	--rw=read \
 	--name "$NAME" \
 	--filename "$1" \
+	--minimal \
 	--output "fio.$NAME$2"
