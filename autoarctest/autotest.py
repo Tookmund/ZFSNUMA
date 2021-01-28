@@ -18,6 +18,7 @@ testruns = os.listdir("test-runs")
 
 if len(testruns) == 0:
     print("Test Run Complete!")
+    subprocess.run(["sendmessage.sh", "Test Run Complete!"], check=True)
     sys.exit(0)
 
 testfile = testruns[0]
