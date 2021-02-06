@@ -31,8 +31,12 @@ node = test[1]
 script = test[2]
 datafile = test[3]
 nums = ""
+opposite = False
+
 if len(test) > 4:
     nums = test[4]
+if len(test) > 5 and test[5] == "O":
+    opposite = True
 
 os.chdir("newdata")
 
@@ -55,12 +59,12 @@ except FileExistsError:
 
 os.chdir(bound+node)
 
-if bound == "O":
+if opposite:
     try:
-        os.mkdir(bound)
+        os.mkdir("O")
     except FileExistsError:
         pass
-    os.chdir(bound)
+    os.chdir("O")
     onode = "1" if node == "0" else "0"
     subprocess.run(["numactl", "-N", onode, "-m", onode,
         "../../../../"+script+".sh", "/tank/"+datafile, nums], check=True)
