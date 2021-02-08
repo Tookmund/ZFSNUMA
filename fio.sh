@@ -17,6 +17,6 @@ do
 		--rw=read \
 		--name "$NAME" \
 		--filename "$1" \
-		--minimal \
+		--output-format=json \
 		--output "fio.$NAME.$p$2"
 done

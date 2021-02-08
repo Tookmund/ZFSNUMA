@@ -15,5 +15,5 @@ fio \
 	--rw=read \
 	--name "$NAME" \
 	--filename "$1" \
-	--minimal \
+	--output-format=json \
 	--output "fio.$NAME$2"
