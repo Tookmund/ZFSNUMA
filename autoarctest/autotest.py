@@ -59,6 +59,11 @@ except FileExistsError:
 
 os.chdir(bound+node)
 
+subprocess.run(["numactl", "-N", node, "-m", node,
+    "../../../"+script+".sh", "/tank/"+datafile, nums], check=True)
+
+meminfo("After Test")
+
 if opposite:
     try:
         os.mkdir("O")
@@ -70,11 +75,6 @@ if opposite:
         "../../../../"+script+".sh", "/tank/"+datafile, nums], check=True)
     meminfo("After Opposite Node")
     os.chdir("..")
-
-subprocess.run(["numactl", "-N", node, "-m", node,
-    "../../../"+script+".sh", "/tank/"+datafile, nums], check=True)
-
-meminfo("After Test")
 
 os.remove("../../test-runs/"+testfile)
 print(testfile, "Complete!", flush=True)
