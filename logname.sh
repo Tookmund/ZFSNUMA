@@ -1,4 +1,4 @@
 for i in *.log
 do
-	mv "$i" "$(head -n 1 "$i")"
+	mv "$i" "$(grep -e '[BU]\.[01]\.fio.*[^!]$' "$i")"
 done
