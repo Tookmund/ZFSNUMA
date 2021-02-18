@@ -15,3 +15,10 @@ with open(fname) as f:
         print("99% Latency:", j["clat_ns"]["percentile"]["99.000000"])
     elif stat == "avglat" or stat == "avg":
         print("Average Latency:", j["lat_ns"]["mean"])
+    else:
+        try:
+            d = int(stat)
+            print("{}% Latency:".format(d),
+                j["clat_ns"]["percentile"]["{}.000000".format(d)])
+        except:
+            print("No Such Stat {}".format(stat))
