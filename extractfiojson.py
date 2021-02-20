@@ -16,6 +16,6 @@ with open(fname) as f:
     elif stat == "avglat" or stat == "avg":
         print("Average Latency:", j["lat_ns"]["mean"])
     else:
-        d = int(stat)
-        print("{}% Latency:".format(d),
-            j["clat_ns"]["percentile"]["{}.000000".format(d)])
+        ptile = float(stat)
+        print("{}% Latency:".format(ptile),
+            j["clat_ns"]["percentile"]["{:.6f}".format(ptile)])
