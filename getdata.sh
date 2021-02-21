@@ -22,9 +22,5 @@ then
 	SUFFIX=".$SUFFIX"
 fi
 
-for f in $(eval echo ./${FOLDER}/${FIOTYPE}fio.${WHICH}${SUFFIX})
-do
-	echo $f
-	"$BIN/extractfio${FORMAT}.py" "$WHAT" "$f"
-	printf "\n"
-done
+"$BIN/extractfio${FORMAT}.py" "$WHAT" \
+	$(eval echo ./${FOLDER}/${FIOTYPE}fio.${WHICH}${SUFFIX})
