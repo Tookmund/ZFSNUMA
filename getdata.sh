@@ -22,5 +22,7 @@ then
 	SUFFIX=".$SUFFIX"
 fi
 
+echo $@
+
 "$BIN/extractfio${FORMAT}.py" "$WHAT" \
 	$(eval echo ./${FOLDER}/${FIOTYPE}fio.${WHICH}${SUFFIX})

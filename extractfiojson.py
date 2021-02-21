@@ -5,17 +5,6 @@ import sys
 
 stat = sys.argv[1]
 statfiles = sys.argv[2:]
-if stat == "bw":
-	print("Bandwidth")
-elif stat == "99lat":
-	print("99% Latency")
-elif stat == "50lat":
-	print("50% Latency")
-elif stat == "avglat" or stat == "avg":
-	print("Average Latency")
-else:
-	ptile = float(stat)
-	print("{}% Latency:".format(ptile))
 
 for fname in statfiles:
 	with open(fname) as f:
@@ -29,4 +18,5 @@ for fname in statfiles:
 		elif stat == "avglat" or stat == "avg":
 			print(j["lat_ns"]["mean"])
 		else:
+			ptile = float(stat)
 			print(j["clat_ns"]["percentile"]["{:.6f}".format(ptile)])
