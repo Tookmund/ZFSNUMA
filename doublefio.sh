@@ -18,6 +18,6 @@ do
 		--name "$NAME" \
 		--filename "$1" \
 		--output-format=json \
-		--output "smallfio.$NAME.$p$2" \
+		--output "doublefio.$NAME.$p$2" \
 		--bs=8192
 done
