@@ -18,10 +18,5 @@ do
 		--name "$NAME" \
 		--filename "$1" \
 		--output-format=json \
-		--output "fio.$NAME.$p$2" &
-	echo "Fio Node 0 pages"
-	cat /proc/$!/numa_maps | grep N0
-	echo "Fio Node 1 pages"
-	cat /proc/$!/numa_maps | grep N1
-	wait $!
+		--output "fio.$NAME.$p$2"
 done
