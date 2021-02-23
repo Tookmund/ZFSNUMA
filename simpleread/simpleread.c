@@ -17,11 +17,6 @@ int main(int argc, char **argv)
 	char *filename = argv[1];
 
 	int blocksize = atoi(argv[2]);
-	if (blocksize < 0)
-	{
-		perror("simpleread block size");
-		return 2;
-	}
 
 	int fd = open(filename, 0);
 	if (fd < 0)
