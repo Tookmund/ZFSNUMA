@@ -7,6 +7,12 @@ then
 fi
 
 NAME="$(basename "$1")"
+BLOCKSIZE="4096"
+
+if [ ! -z $3 ]
+then
+	BLOCKSIZE="$3"
+fi
 
 for p in pre post
 do
@@ -18,5 +24,6 @@ do
 		--name "$NAME" \
 		--filename "$1" \
 		--output-format=json \
-		--output "fio.$NAME.$p$2"
+		"--bs=$BLOCKSIZE" \
+		--output "$3fio.$NAME.$p$2"
 done
