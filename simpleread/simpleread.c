@@ -6,25 +6,22 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-/* simpleread <filename> <blocksize (in KB)> */
 int main(int argc, char **argv)
 {
 	if (argc < 3)
 	{
-		fputs("simpleread <filename> <blocksize (in KB)>\n", stderr);
+		fputs("simpleread <filename> <blocksize (in bytes)>\n", stderr);
 		return 1;
 	}
 
 	char *filename = argv[1];
 
-	double inputsize = atof(argv[2]);
-	if (inputsize < 0)
+	int blocksize = atoi(argv[2]);
+	if (blocksize < 0)
 	{
 		perror("simpleread block size");
 		return 2;
 	}
-	/* blocksize should be in KB */
-	int blocksize = (int)(1024*inputsize);
 
 	int fd = open(filename, 0);
 	if (fd < 0)
