@@ -23,13 +23,20 @@ int main(int argc, char **argv)
 	{
 		fprintf(stderr, "Open file \"%s\"\n", filename);
 		perror("simpleread open file");
+		return 2;
+	}
+
+	/* char is always 1, so we can skip sizeof */
+	char *buf = malloc(blocksize);
+	if (buf == NULL)
+	{
+		perror("simpleread buf malloc");
 		return 3;
 	}
 
-	char buf[blocksize];
 	size_t bytes = 1;
 
-	while (bytes > 0) bytes = read(fd, buf, sizeof(buf));
+	while (bytes > 0) bytes = read(fd, buf, blocksize);
 
 	if (errno != 0)
 	{
