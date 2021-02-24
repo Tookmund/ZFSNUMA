@@ -8,13 +8,6 @@ fi
 
 NAME="$(basename "$1")"
 BLOCKSIZE="4096"
-FILENAME="$3fio.$NAME.$p$2"
-
-if [ -f "$FILENAME" ]
-then
-	echo "ERROR: $FILENAME exists!"
-	exit 2
-fi
 
 if [ ! -z $3 ]
 then
@@ -23,6 +16,13 @@ fi
 
 for p in pre post
 do
+	FILENAME="$3fio.$NAME.$p$2"
+
+	if [ -f "$FILENAME" ]
+	then
+		echo "ERROR: $FILENAME exists!"
+		exit 2
+	fi
 	fio \
 		--readonly \
 		--invalidate=0 \
