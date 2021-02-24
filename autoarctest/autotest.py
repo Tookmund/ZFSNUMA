@@ -32,11 +32,14 @@ script = test[2]
 datafile = test[3]
 nums = ""
 opposite = False
+blocksize = ""
 
 if len(test) > 4:
     nums = test[4]
 if len(test) > 5 and test[5] == "O":
     opposite = True
+if len(test) > 6:
+    blocksize = test[6]
 
 os.chdir("newdata")
 
@@ -60,7 +63,7 @@ except FileExistsError:
 os.chdir(bound+node)
 
 subprocess.run(["numactl", "-N", node, "-m", node,
-    "../../../"+script+".sh", "/tank/"+datafile, nums], check=True)
+    "../../../"+script+".sh", "/tank/"+datafile, nums, blocksize], check=True)
 
 meminfo("After Test")
 

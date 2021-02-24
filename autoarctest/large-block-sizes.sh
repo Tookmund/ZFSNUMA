@@ -10,7 +10,10 @@ do
 			do
 				for r in 1 2 3
 				do
-					touch "$b.$n.$t.$(basename "$f").$r.O"
+					for bs in 2M 4M 8M
+					do
+						touch "$b.$n.$t.$(basename "$f").$r.O.$bs"
+					done
 				done
 			done
 		done
