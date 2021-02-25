@@ -82,5 +82,6 @@ if opposite:
     os.chdir("..")
 
 os.remove("../../test-runs/"+testfile)
+subprocess.run(["sendmessage.sh", testfile], check=True)
 print(testfile, "Complete!", flush=True)
 subprocess.run(["reboot"])
