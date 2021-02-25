@@ -29,7 +29,11 @@ Exception: {}
 
 def message(text):
     print(text)
-    subprocess.run(["sendmessage.sh", text], check=True)
+    try:
+        subprocess.run(["sendmessage.sh", text], check=True)
+    except:
+        # Sometimes we have no internet, no need to completely fail
+        pass
 
 os.chdir("/home/jaadams/arctest/autoarctest/")
 
