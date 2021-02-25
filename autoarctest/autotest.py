@@ -13,27 +13,24 @@ def meminfo(what):
             print(f.read())
 
 def runtest(folder, node, script, datafile, nums, blocksize):
-    try:
-        subprocess.run(["numactl", "-N", node, "-m", node,
-            folder+script+".sh", "/tank/"+datafile, nums, blocksize], check=True)
-    except Exception as e:
+    t = subprocess.run(["numactl", "-N", node, "-m", node,
+        folder+script+".sh", "/tank/"+datafile, nums, blocksize],
+        capture_output=True, stderr=subprocess.STDOUT)
+
+    if t.return_code != 0:
         message('''ERROR
 Node: {}
 Script: {}
 Datafile: {}
 Nums: {}
 Blocksize: {}
-Exception: {}
-'''.format(node, script, datafile, nums, blocksize, e))
-        raise e
+Error:
+{}'''.format(node, script, datafile, nums, blocksize, t.stdout))
+        sys.exit(t.return_code);
 
 def message(text):
     print(text)
-    try:
-        subprocess.run(["sendmessage.sh", text], check=True)
-    except:
-        # Sometimes we have no internet, no need to completely fail
-        pass
+    subprocess.run(["sendmessage.sh", text], check=False)
 
 os.chdir("/home/jaadams/arctest/autoarctest/")
 
