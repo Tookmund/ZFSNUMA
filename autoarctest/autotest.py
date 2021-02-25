@@ -13,16 +13,29 @@ def meminfo(what):
             print(f.read())
 
 def runtest(node, script, datafile, nums, blocksize):
-    subprocess.run(["numactl", "-N", node, "-m", node,
-        "../../../"+script+".sh", "/tank/"+datafile, nums, blocksize], check=True)
+    try:
+        subprocess.run(["numactl", "-N", node, "-m", node,
+            "../../../"+script+".sh", "/tank/"+datafile, nums, blocksize], check=True)
+    except Exception as e:
+        message('''ERROR
+Node: {}
+Script: {}
+Datafile: {}
+Nums: {}
+Blocksize: {}
+Exception: {}
+'''.format(node, script, datafile, nums, blocksize, e))
+
+def message(text):
+    print(text)
+    subprocess.run(["sendmessage.sh", text], check=True)
 
 os.chdir("/home/jaadams/arctest/autoarctest/")
 
 testruns = os.listdir("test-runs")
 
 if len(testruns) == 0:
-    print("Test Run Complete!")
-    subprocess.run(["sendmessage.sh", "Test Run Complete!"], check=True)
+    message("Test Run Complete!")
     sys.exit(0)
 
 testfile = testruns[0]
@@ -82,6 +95,6 @@ if opposite:
     os.chdir("..")
 
 os.remove("../../test-runs/"+testfile)
-subprocess.run(["sendmessage.sh", testfile], check=True)
+message(testfile)
 print(testfile, "Complete!", flush=True)
 subprocess.run(["reboot"])
