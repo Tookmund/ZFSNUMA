@@ -3,7 +3,7 @@
 if [ -z $1 ]
 then
 	echo "Requires a Test File!"
-	exit 1
+	exit 41
 fi
 
 NAME="$(basename "$1")"
@@ -21,7 +21,7 @@ do
 	if [ -f "$FILENAME" ]
 	then
 		echo "ERROR: $FILENAME exists!"
-		exit 2
+		exit 42
 	fi
 	fio \
 		--readonly \
