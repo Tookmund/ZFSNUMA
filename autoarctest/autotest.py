@@ -12,6 +12,10 @@ def meminfo(what):
         with open("/sys/devices/system/node/node"+n+"/meminfo") as f:
             print(f.read())
 
+def runtest(node, script, datafile, nums, blocksize):
+    subprocess.run(["numactl", "-N", node, "-m", node,
+        "../../../"+script+".sh", "/tank/"+datafile, nums, blocksize], check=True)
+
 os.chdir("/home/jaadams/arctest/autoarctest/")
 
 testruns = os.listdir("test-runs")
@@ -62,8 +66,7 @@ except FileExistsError:
 
 os.chdir(bound+node)
 
-subprocess.run(["numactl", "-N", node, "-m", node,
-    "../../../"+script+".sh", "/tank/"+datafile, nums, blocksize], check=True)
+runtest(node, script, datafile, nums, blocksize)
 
 meminfo("After Test")
 
@@ -74,8 +77,7 @@ if opposite:
         pass
     os.chdir("O")
     onode = "1" if node == "0" else "0"
-    subprocess.run(["numactl", "-N", onode, "-m", onode,
-        "../../../../"+script+".sh", "/tank/"+datafile, nums], check=True)
+    runtest(onode, script, datafile, nums, blocksize)
     meminfo("After Opposite Node")
     os.chdir("..")
 
