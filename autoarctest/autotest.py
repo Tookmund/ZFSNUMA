@@ -17,7 +17,7 @@ def runtest(folder, node, script, datafile, nums, blocksize):
         folder+script+".sh", "/tank/"+datafile, nums, blocksize],
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
-    if t.return_code != 0:
+    if t.returncode != 0:
         message('''ERROR
 Node: {}
 Script: {}
@@ -26,7 +26,7 @@ Nums: {}
 Blocksize: {}
 Error:
 {}'''.format(node, script, datafile, nums, blocksize, t.stdout))
-        sys.exit(t.return_code);
+        sys.exit(t.returncode);
 
 def message(text):
     print(text)
