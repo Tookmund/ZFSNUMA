@@ -15,7 +15,7 @@ def meminfo(what):
 def runtest(folder, node, script, datafile, nums, blocksize):
     t = subprocess.run(["numactl", "-N", node, "-m", node,
         folder+script+".sh", "/tank/"+datafile, nums, blocksize],
-        capture_output=True, stderr=subprocess.STDOUT)
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     if t.return_code != 0:
         message('''ERROR
