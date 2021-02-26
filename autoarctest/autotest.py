@@ -97,6 +97,5 @@ if opposite:
     os.chdir("..")
 
 os.remove("../../test-runs/"+testfile)
-message(testfile)
 print(testfile, "Complete!", flush=True)
 subprocess.run(["reboot"])
