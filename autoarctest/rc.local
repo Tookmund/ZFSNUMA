@@ -1,8 +1,9 @@
 #!/bin/sh
 
-mkdir -p /var/log/autoarctest
+LOGDIR=/var/log/autoarctest
+mkdir -p "$LOGDIR"
 sleep 30
 /home/jaadams/arctest/autoarctest/autotest.py \
-	> /var/log/autoarctest/$(date --iso-8601=seconds).log 2>&1 \
-	|| sendmessage.sh $(printf "Test Run Error:\n%s" \
-		$(tail $(ls /var/log/autoarctest/ | sort | tail -1)))
+	> "$LOGDIR/$(date --iso-8601=seconds).log" 2>&1 \
+	|| sendmessage.sh "$(printf "Test Run Error:\n%s" \
+		"$(tail "$LOGDIR/$(ls "$LOGDIR" | sort | tail -1)")")"
