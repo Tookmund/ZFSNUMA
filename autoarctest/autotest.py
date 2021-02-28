@@ -40,7 +40,7 @@ runsleft = len(testruns)
 if runsleft == 0:
     message("Test Run Complete!")
     sys.exit(0)
-else if runsleft % 5 == 0:
+elif runsleft % 5 == 0:
     message("{} Tests Remaining!".format(runsleft))
 
 testfile = testruns[0]
