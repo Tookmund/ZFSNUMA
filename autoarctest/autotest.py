@@ -19,13 +19,14 @@ def runtest(folder, node, script, datafile, nums, blocksize):
 
     if t.returncode != 0:
         message('''ERROR
+Return Code: {}
 Node: {}
 Script: {}
 Datafile: {}
 Nums: {}
 Blocksize: {}
 Error:
-{}'''.format(node, script, datafile, nums, blocksize, t.stdout))
+{}'''.format(t.returncode, node, script, datafile, nums, blocksize, t.stdout))
         sys.exit(t.returncode);
 
 def message(text):
