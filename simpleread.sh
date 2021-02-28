@@ -6,9 +6,8 @@ then
 	exit 1
 fi
 
+DIR="$(dirname "$0")"
 NAME="$(basename "$1")"
-DIR="$(dirname "$1")"
-
 BLOCKSIZE=4096
 if [ ! -z $3 ]
 then
