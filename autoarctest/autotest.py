@@ -36,9 +36,12 @@ os.chdir("/home/jaadams/arctest/autoarctest/")
 
 testruns = os.listdir("test-runs")
 
-if len(testruns) == 0:
+runsleft = len(testruns)
+if runsleft == 0:
     message("Test Run Complete!")
     sys.exit(0)
+else if runsleft % 5 == 0:
+    message("{} Tests Remaining!".format(runsleft))
 
 testfile = testruns[0]
 print(testfile)
