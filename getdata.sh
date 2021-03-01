@@ -1,13 +1,14 @@
 #!/bin/bash
-# getdata.sh <data format> <which data> <fio type> <what data> <folder> <suffix>
+# getdata.sh <program> <data format> <which data> <fio type> <what data> <folder> <suffix>
 BIN="$(dirname "$0")"
 
-FORMAT="$1"
-WHICH="$2"
-FIOTYPE="$3"
-WHAT="$4"
-FOLDER="$5"
-SUFFIX="$6"
+PROGRAM="$1"
+FORMAT="$2"
+WHICH="$3"
+FIOTYPE="$4"
+WHAT="$5"
+FOLDER="$6"
+SUFFIX="$7"
 
 if [ "$WHICH" = "legacy" ]
 then
@@ -24,5 +25,13 @@ fi
 
 echo $@
 
-"$BIN/extractfio${FORMAT}.py" "$WHAT" \
-	$(eval echo ./${FOLDER}/${FIOTYPE}fio.${WHICH}${SUFFIX})
+if [ "$PROGRAM" = "fio" ]
+then
+	EXTRACTOR="extract${PROGRAM}${FORMAT}.py"
+elif [ "$PROGRAM" = "simpleread" ]
+then
+	EXTRACTOR="extractrealtime.sh"
+fi
+
+"$BIN/$EXTRACTOR" "$WHAT" \
+	$(eval echo ./${FOLDER}/${FIOTYPE}${PROGRAM}.${WHICH}${SUFFIX})
