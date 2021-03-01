@@ -26,7 +26,7 @@ Datafile: {}
 Nums: {}
 Blocksize: {}
 Error:
-{}'''.format(t.returncode, node, script, datafile, nums, blocksize, t.stdout))
+{}'''.format(t.returncode, node, script, datafile, nums, blocksize, str(t.stdout)))
         sys.exit(t.returncode);
 
 def message(text):
