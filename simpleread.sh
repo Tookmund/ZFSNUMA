@@ -18,5 +18,5 @@ for p in pre post
 do
 	{
 		time "$DIR/simpleread/simpleread" "$1" "$BLOCKSIZE"
-	} > "$3simpleread.$NAME.$p$2"
+	} > "$3simpleread.$NAME.$p$2" 2>&1
 done
