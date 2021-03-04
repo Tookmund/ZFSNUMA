@@ -14,9 +14,12 @@ then
 	BLOCKSIZE="${3/M/000000}"
 fi
 
+EXE="$(basename "$0")"
+EXE="${EXE/.sh/}"
+
 for p in pre post
 do
 	{
-		time "$DIR/simpleread/simpleread" "$1" "$BLOCKSIZE"
+		time "$DIR/simpleread/$EXE" "$1" "$BLOCKSIZE"
 	} > "$3simpleread.$NAME.$p$2" 2>&1
 done
