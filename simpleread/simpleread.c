@@ -37,11 +37,7 @@ int main(int argc, char **argv) {
 	}
 
 #ifdef HUGE
-	huge[SIZE-1] = '\n';
-	if (huge[0] != 'a') {
-		fputs("SOMETHING HAS GONE WRONG!", stderr);
-		return 42;
-	}
+	for (int i = 0; i < SIZE; i++) huge[i] = i % 255;
 #endif
 
 	size_t bytes = 1;
