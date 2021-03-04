@@ -29,6 +29,12 @@ int main(int argc, char **argv) {
 		return 3;
 	}
 
+#ifdef HUGE
+	size_t hugesize = blocksize*1000;
+	char *huge = malloc(hugesize);
+	for (char i = 0; i < hugesize; i++) huge[i] = i;
+#endif
+
 	size_t bytes = 1;
 	while (bytes > 0) {
 		bytes = read(fd, buf, blocksize);
