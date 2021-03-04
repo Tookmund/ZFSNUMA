@@ -6,6 +6,13 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#ifdef HUGE
+// Borrowed from Stack Overflow
+// https://stackoverflow.com/questions/43520681/increase-binary-executable-size
+#define SIZE 100000000
+char huge[SIZE] = {'a'};
+#endif
+
 int main(int argc, char **argv) {
 	if (argc < 3) {
 		fputs("simpleread <filename> <blocksize (in bytes)>\n", stderr);
@@ -30,9 +37,11 @@ int main(int argc, char **argv) {
 	}
 
 #ifdef HUGE
-	size_t hugesize = blocksize*1000;
-	char *huge = malloc(hugesize);
-	for (char i = 0; i < hugesize; i++) huge[i] = i;
+	huge[SIZE-1] = '\n';
+	if (huge[0] != 'a') {
+		fputs("SOMETHING HAS GONE WRONG!", stderr);
+		return 42;
+	}
 #endif
 
 	size_t bytes = 1;
