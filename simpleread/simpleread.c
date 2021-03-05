@@ -9,7 +9,7 @@
 #ifdef HUGE
 // Borrowed from Stack Overflow
 // https://stackoverflow.com/questions/43520681/increase-binary-executable-size
-#define SIZE 100000000
+#define SIZE 1000000000
 char huge[SIZE] = {'a'};
 #endif
 
