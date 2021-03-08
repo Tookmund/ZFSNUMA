@@ -15,12 +15,12 @@ char huge[SIZE] = {'a'};
 
 int main(int argc, char **argv) {
 	if (argc < 3) {
-		fputs("simpleread <filename> <blocksize (in bytes)>\n", stderr);
+		fputs("simpleread <filename> <readsize (in bytes)>\n", stderr);
 		return 1;
 	}
 
 	char *filename = argv[1];
-	int blocksize = atoi(argv[2]);
+	int readsize = atoi(argv[2]);
 
 	int fd = open(filename, 0);
 	if (fd < 0) {
@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
 	}
 
 	/* char is always 1, so we can skip sizeof */
-	char *buf = malloc(blocksize);
+	char *buf = malloc(readsize);
 	if (buf == NULL) {
 		perror("simpleread buf malloc");
 		return 3;
@@ -42,7 +42,7 @@ int main(int argc, char **argv) {
 
 	size_t bytes = 1;
 	while (bytes > 0) {
-		bytes = read(fd, buf, blocksize);
+		bytes = read(fd, buf, readsize);
 	}
 
 	if (errno != 0) {
