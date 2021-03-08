@@ -69,10 +69,14 @@ os.chdir("newdata")
 # Unload modules to ensure consistent state for test
 subprocess.run(["./scripts/zfs.sh", "-u"], cwd="/home/jaadams/zfs", check=True)
 
-if bound == "B":
+if bound == "B" or bound == "T":
     subprocess.run(["./scripts/zfs.sh"], cwd="/home/jaadams/zfs", check=True)
 else:
     subprocess.run(["modprobe", "zfs"], check=True)
+
+if bound == "M":
+    subprocess.run(["sysctl", "kernel.numa_balancing=1"])
+
 meminfo("Load ZFS")
 
 subprocess.run(["zpool", "import", "tank"], check=True)
