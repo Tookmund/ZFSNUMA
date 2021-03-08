@@ -75,7 +75,9 @@ else:
     subprocess.run(["modprobe", "zfs"], check=True)
 
 if bound == "M":
-    subprocess.run(["sysctl", "kernel.numa_balancing=1"])
+    subprocess.run(["sysctl", "kernel.numa_balancing=1"], check=True)
+else:
+    subprocess.run(["sysctl", "kernel.numa_balancing=0"], check=True)
 
 meminfo("Load ZFS")
 
