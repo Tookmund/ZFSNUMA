@@ -4,12 +4,12 @@
 cp -r ../../newdata/* .
 cp /var/log/autoarctest/* .
 ../../../logname.sh
-mv B.0.* B0
-mv B.0.* B0
-mv U.0.* U0
-mv U.1* U1
-mv M.0* M0
-mv M.1* M1
-mv T.1* T1
-mv T.1* T1
 
+for p in B U T M
+do
+	for n in 0 1
+	do
+		mv $p.$n.* $p$n
+
+	done
+done
