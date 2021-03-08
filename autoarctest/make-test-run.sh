@@ -1,7 +1,8 @@
 #!/bin/bash
 
-SCRIPT="$1"
-FILES="$2"
+TESTTYPE="$1"
+SCRIPT="$2"
+FILES="$3"
 
 case "$FILES" in
 	"doubling")
@@ -18,16 +19,16 @@ case "$FILES" in
 		;;
 esac
 
-RUNS="$3"
-OPPOSITE="$4"
-BLOCKSIZE="$5"
+RUNS="$4"
+OPPOSITE="$5"
+BLOCKSIZE="$6"
 
 if [ -z "$BLOCKSIZE" ]
 then
 	BLOCKSIZE="-"
 fi
 
-for b in U B
+for b in $TESTTYPE
 do
 	for n in 0 1
 	do
