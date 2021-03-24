@@ -9,8 +9,7 @@
 #ifdef HUGE
 // Borrowed from Stack Overflow
 // https://stackoverflow.com/questions/43520681/increase-binary-executable-size
-#define SIZE 1000000000
-char huge[SIZE] = {'a'};
+char huge[HUGE] = {'a'};
 #endif
 
 int main(int argc, char **argv) {
@@ -37,7 +36,7 @@ int main(int argc, char **argv) {
 	}
 
 #ifdef HUGE
-	for (int i = 0; i < SIZE; i++) huge[i] = i % 255;
+	for (int i = 0; i < HUGE; i++) huge[i] = i % 255;
 #endif
 
 	size_t bytes = 1;
