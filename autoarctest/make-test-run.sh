@@ -1,4 +1,5 @@
 #!/bin/bash
+# make-test-run.sh <type(s)> <script> <files> <runs> <opposite> <blocksize>
 
 TESTTYPE="$1"
 SCRIPT="$2"
