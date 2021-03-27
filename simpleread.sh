@@ -19,7 +19,13 @@ EXE="${EXE/.sh/}"
 
 for p in pre post
 do
+	OUT="$3$EXE.$NAME.$p$2"
+	if [ -f "$OUT" ]
+	then
+		echo "$OUT already exists!"
+		exit 1
+	fi
 	{
 		time "$DIR/simpleread/$EXE" "$1" "$BLOCKSIZE"
-	} > "$3simpleread.$NAME.$p$2" 2>&1
+	} > "$OUT" 2>&1
 done
