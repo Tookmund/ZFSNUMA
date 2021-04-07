@@ -1,0 +1,358 @@
+kernel.numa_balancing = 0
+B.1.fio.500M.1.O.32K
+Begin
+Node 0 MemTotal:       24743736 kB
+Node 0 MemFree:        24509852 kB
+Node 0 MemUsed:          233884 kB
+Node 0 Active:            46296 kB
+Node 0 Inactive:          46568 kB
+Node 0 Active(anon):      10160 kB
+Node 0 Inactive(anon):      476 kB
+Node 0 Active(file):      36136 kB
+Node 0 Inactive(file):    46092 kB
+Node 0 Unevictable:       13240 kB
+Node 0 Mlocked:           13240 kB
+Node 0 Dirty:               140 kB
+Node 0 Writeback:             0 kB
+Node 0 FilePages:         85860 kB
+Node 0 Mapped:            38244 kB
+Node 0 AnonPages:         20372 kB
+Node 0 Shmem:               692 kB
+Node 0 KernelStack:        2008 kB
+Node 0 PageTables:          424 kB
+Node 0 NFS_Unstable:          0 kB
+Node 0 Bounce:                0 kB
+Node 0 WritebackTmp:          0 kB
+Node 0 KReclaimable:      20404 kB
+Node 0 Slab:              49368 kB
+Node 0 SReclaimable:      20404 kB
+Node 0 SUnreclaim:        28964 kB
+Node 0 AnonHugePages:         0 kB
+Node 0 ShmemHugePages:        0 kB
+Node 0 ShmemPmdMapped:        0 kB
+Node 0 FileHugePages:        0 kB
+Node 0 FilePmdMapped:        0 kB
+Node 0 HugePages_Total:     0
+Node 0 HugePages_Free:      0
+Node 0 HugePages_Surp:      0
+
+Node 1 MemTotal:       24686196 kB
+Node 1 MemFree:        24245860 kB
+Node 1 MemUsed:          440336 kB
+Node 1 Active:            52276 kB
+Node 1 Inactive:         102824 kB
+Node 1 Active(anon):      23712 kB
+Node 1 Inactive(anon):      408 kB
+Node 1 Active(file):      28564 kB
+Node 1 Inactive(file):   102416 kB
+Node 1 Unevictable:        5284 kB
+Node 1 Mlocked:            5284 kB
+Node 1 Dirty:               404 kB
+Node 1 Writeback:             0 kB
+Node 1 FilePages:        136840 kB
+Node 1 Mapped:            52316 kB
+Node 1 AnonPages:         23604 kB
+Node 1 Shmem:               576 kB
+Node 1 KernelStack:        1608 kB
+Node 1 PageTables:          888 kB
+Node 1 NFS_Unstable:          0 kB
+Node 1 Bounce:                0 kB
+Node 1 WritebackTmp:          0 kB
+Node 1 KReclaimable:      21596 kB
+Node 1 Slab:              57444 kB
+Node 1 SReclaimable:      21596 kB
+Node 1 SUnreclaim:        35848 kB
+Node 1 AnonHugePages:         0 kB
+Node 1 ShmemHugePages:        0 kB
+Node 1 ShmemPmdMapped:        0 kB
+Node 1 FileHugePages:        0 kB
+Node 1 FilePmdMapped:        0 kB
+Node 1 HugePages_Total:     0
+Node 1 HugePages_Free:      0
+Node 1 HugePages_Surp:      0
+
+Load ZFS
+Node 0 MemTotal:       24743736 kB
+Node 0 MemFree:        24459820 kB
+Node 0 MemUsed:          283916 kB
+Node 0 Active:            64660 kB
+Node 0 Inactive:          67884 kB
+Node 0 Active(anon):      27716 kB
+Node 0 Inactive(anon):      524 kB
+Node 0 Active(file):      36944 kB
+Node 0 Inactive(file):    67360 kB
+Node 0 Unevictable:       13452 kB
+Node 0 Mlocked:           13452 kB
+Node 0 Dirty:               296 kB
+Node 0 Writeback:             0 kB
+Node 0 FilePages:        107908 kB
+Node 0 Mapped:            39376 kB
+Node 0 AnonPages:         37988 kB
+Node 0 Shmem:               696 kB
+Node 0 KernelStack:        2624 kB
+Node 0 PageTables:         2236 kB
+Node 0 NFS_Unstable:          0 kB
+Node 0 Bounce:                0 kB
+Node 0 WritebackTmp:          0 kB
+Node 0 KReclaimable:      21052 kB
+Node 0 Slab:              53668 kB
+Node 0 SReclaimable:      21052 kB
+Node 0 SUnreclaim:        32616 kB
+Node 0 AnonHugePages:         0 kB
+Node 0 ShmemHugePages:        0 kB
+Node 0 ShmemPmdMapped:        0 kB
+Node 0 FileHugePages:        0 kB
+Node 0 FilePmdMapped:        0 kB
+Node 0 HugePages_Total:     0
+Node 0 HugePages_Free:      0
+Node 0 HugePages_Surp:      0
+
+Node 1 MemTotal:       24686196 kB
+Node 1 MemFree:        24151872 kB
+Node 1 MemUsed:          534324 kB
+Node 1 Active:            62484 kB
+Node 1 Inactive:         185272 kB
+Node 1 Active(anon):      32324 kB
+Node 1 Inactive(anon):      420 kB
+Node 1 Active(file):      30160 kB
+Node 1 Inactive(file):   184852 kB
+Node 1 Unevictable:        5284 kB
+Node 1 Mlocked:            5284 kB
+Node 1 Dirty:               348 kB
+Node 1 Writeback:             0 kB
+Node 1 FilePages:        220868 kB
+Node 1 Mapped:            55304 kB
+Node 1 AnonPages:         32320 kB
+Node 1 Shmem:               572 kB
+Node 1 KernelStack:        1672 kB
+Node 1 PageTables:         1108 kB
+Node 1 NFS_Unstable:          0 kB
+Node 1 Bounce:                0 kB
+Node 1 WritebackTmp:          0 kB
+Node 1 KReclaimable:      22604 kB
+Node 1 Slab:              60368 kB
+Node 1 SReclaimable:      22604 kB
+Node 1 SUnreclaim:        37764 kB
+Node 1 AnonHugePages:         0 kB
+Node 1 ShmemHugePages:        0 kB
+Node 1 ShmemPmdMapped:        0 kB
+Node 1 FileHugePages:        0 kB
+Node 1 FilePmdMapped:        0 kB
+Node 1 HugePages_Total:     0
+Node 1 HugePages_Free:      0
+Node 1 HugePages_Surp:      0
+
+Import tank ZPool
+Node 0 MemTotal:       24743736 kB
+Node 0 MemFree:        24459500 kB
+Node 0 MemUsed:          284236 kB
+Node 0 Active:            64744 kB
+Node 0 Inactive:          69040 kB
+Node 0 Active(anon):      27468 kB
+Node 0 Inactive(anon):      528 kB
+Node 0 Active(file):      37276 kB
+Node 0 Inactive(file):    68512 kB
+Node 0 Unevictable:       13468 kB
+Node 0 Mlocked:           13468 kB
+Node 0 Dirty:               268 kB
+Node 0 Writeback:             0 kB
+Node 0 FilePages:        109408 kB
+Node 0 Mapped:            39564 kB
+Node 0 AnonPages:         37664 kB
+Node 0 Shmem:               696 kB
+Node 0 KernelStack:        2456 kB
+Node 0 PageTables:         1784 kB
+Node 0 NFS_Unstable:          0 kB
+Node 0 Bounce:                0 kB
+Node 0 WritebackTmp:          0 kB
+Node 0 KReclaimable:      21176 kB
+Node 0 Slab:              53952 kB
+Node 0 SReclaimable:      21176 kB
+Node 0 SUnreclaim:        32776 kB
+Node 0 AnonHugePages:         0 kB
+Node 0 ShmemHugePages:        0 kB
+Node 0 ShmemPmdMapped:        0 kB
+Node 0 FileHugePages:        0 kB
+Node 0 FilePmdMapped:        0 kB
+Node 0 HugePages_Total:     0
+Node 0 HugePages_Free:      0
+Node 0 HugePages_Surp:      0
+
+Node 1 MemTotal:       24686196 kB
+Node 1 MemFree:        24136744 kB
+Node 1 MemUsed:          549452 kB
+Node 1 Active:            63052 kB
+Node 1 Inactive:         185360 kB
+Node 1 Active(anon):      32744 kB
+Node 1 Inactive(anon):      420 kB
+Node 1 Active(file):      30308 kB
+Node 1 Inactive(file):   184940 kB
+Node 1 Unevictable:        5284 kB
+Node 1 Mlocked:            5284 kB
+Node 1 Dirty:               364 kB
+Node 1 Writeback:             0 kB
+Node 1 FilePages:        221104 kB
+Node 1 Mapped:            55084 kB
+Node 1 AnonPages:         32216 kB
+Node 1 Shmem:               572 kB
+Node 1 KernelStack:        2776 kB
+Node 1 PageTables:         1172 kB
+Node 1 NFS_Unstable:          0 kB
+Node 1 Bounce:                0 kB
+Node 1 WritebackTmp:          0 kB
+Node 1 KReclaimable:      22616 kB
+Node 1 Slab:              66200 kB
+Node 1 SReclaimable:      22616 kB
+Node 1 SUnreclaim:        43584 kB
+Node 1 AnonHugePages:         0 kB
+Node 1 ShmemHugePages:        0 kB
+Node 1 ShmemPmdMapped:        0 kB
+Node 1 FileHugePages:        0 kB
+Node 1 FilePmdMapped:        0 kB
+Node 1 HugePages_Total:     0
+Node 1 HugePages_Free:      0
+Node 1 HugePages_Surp:      0
+
+After Test
+Node 0 MemTotal:       24743736 kB
+Node 0 MemFree:        24409380 kB
+Node 0 MemUsed:          334356 kB
+Node 0 Active:            47492 kB
+Node 0 Inactive:          68544 kB
+Node 0 Active(anon):       9668 kB
+Node 0 Inactive(anon):      524 kB
+Node 0 Active(file):      37824 kB
+Node 0 Inactive(file):    68020 kB
+Node 0 Unevictable:       13468 kB
+Node 0 Mlocked:           13468 kB
+Node 0 Dirty:               276 kB
+Node 0 Writeback:             0 kB
+Node 0 FilePages:        109448 kB
+Node 0 Mapped:            38328 kB
+Node 0 AnonPages:         20052 kB
+Node 0 Shmem:               696 kB
+Node 0 KernelStack:        2040 kB
+Node 0 PageTables:          352 kB
+Node 0 NFS_Unstable:          0 kB
+Node 0 Bounce:                0 kB
+Node 0 WritebackTmp:          0 kB
+Node 0 KReclaimable:      21176 kB
+Node 0 Slab:              53884 kB
+Node 0 SReclaimable:      21176 kB
+Node 0 SUnreclaim:        32708 kB
+Node 0 AnonHugePages:         0 kB
+Node 0 ShmemHugePages:        0 kB
+Node 0 ShmemPmdMapped:        0 kB
+Node 0 FileHugePages:        0 kB
+Node 0 FilePmdMapped:        0 kB
+Node 0 HugePages_Total:     0
+Node 0 HugePages_Free:      0
+Node 0 HugePages_Surp:      0
+
+Node 1 MemTotal:       24686196 kB
+Node 1 MemFree:        23146740 kB
+Node 1 MemUsed:         1539456 kB
+Node 1 Active:            55132 kB
+Node 1 Inactive:         186204 kB
+Node 1 Active(anon):      23752 kB
+Node 1 Inactive(anon):      444 kB
+Node 1 Active(file):      31380 kB
+Node 1 Inactive(file):   185760 kB
+Node 1 Unevictable:        5284 kB
+Node 1 Mlocked:            5284 kB
+Node 1 Dirty:               384 kB
+Node 1 Writeback:             0 kB
+Node 1 FilePages:        223040 kB
+Node 1 Mapped:            52660 kB
+Node 1 AnonPages:         23528 kB
+Node 1 Shmem:               616 kB
+Node 1 KernelStack:        2712 kB
+Node 1 PageTables:         1056 kB
+Node 1 NFS_Unstable:          0 kB
+Node 1 Bounce:                0 kB
+Node 1 WritebackTmp:          0 kB
+Node 1 KReclaimable:      23896 kB
+Node 1 Slab:              73184 kB
+Node 1 SReclaimable:      23896 kB
+Node 1 SUnreclaim:        49288 kB
+Node 1 AnonHugePages:         0 kB
+Node 1 ShmemHugePages:        0 kB
+Node 1 ShmemPmdMapped:        0 kB
+Node 1 FileHugePages:        0 kB
+Node 1 FilePmdMapped:        0 kB
+Node 1 HugePages_Total:     0
+Node 1 HugePages_Free:      0
+Node 1 HugePages_Surp:      0
+
+After Opposite Node
+Node 0 MemTotal:       24743736 kB
+Node 0 MemFree:        24408776 kB
+Node 0 MemUsed:          334960 kB
+Node 0 Active:            47676 kB
+Node 0 Inactive:          68580 kB
+Node 0 Active(anon):       9824 kB
+Node 0 Inactive(anon):      576 kB
+Node 0 Active(file):      37852 kB
+Node 0 Inactive(file):    68004 kB
+Node 0 Unevictable:       13468 kB
+Node 0 Mlocked:           13468 kB
+Node 0 Dirty:               284 kB
+Node 0 Writeback:             0 kB
+Node 0 FilePages:        109548 kB
+Node 0 Mapped:            38416 kB
+Node 0 AnonPages:         19992 kB
+Node 0 Shmem:               784 kB
+Node 0 KernelStack:        2168 kB
+Node 0 PageTables:          552 kB
+Node 0 NFS_Unstable:          0 kB
+Node 0 Bounce:                0 kB
+Node 0 WritebackTmp:          0 kB
+Node 0 KReclaimable:      21232 kB
+Node 0 Slab:              54052 kB
+Node 0 SReclaimable:      21232 kB
+Node 0 SUnreclaim:        32820 kB
+Node 0 AnonHugePages:         0 kB
+Node 0 ShmemHugePages:        0 kB
+Node 0 ShmemPmdMapped:        0 kB
+Node 0 FileHugePages:        0 kB
+Node 0 FilePmdMapped:        0 kB
+Node 0 HugePages_Total:     0
+Node 0 HugePages_Free:      0
+Node 0 HugePages_Surp:      0
+
+Node 1 MemTotal:       24686196 kB
+Node 1 MemFree:        23146836 kB
+Node 1 MemUsed:         1539360 kB
+Node 1 Active:            55080 kB
+Node 1 Inactive:         186044 kB
+Node 1 Active(anon):      23560 kB
+Node 1 Inactive(anon):      416 kB
+Node 1 Active(file):      31520 kB
+Node 1 Inactive(file):   185628 kB
+Node 1 Unevictable:        5284 kB
+Node 1 Mlocked:            5284 kB
+Node 1 Dirty:               392 kB
+Node 1 Writeback:             0 kB
+Node 1 FilePages:        223004 kB
+Node 1 Mapped:            52892 kB
+Node 1 AnonPages:         23404 kB
+Node 1 Shmem:               572 kB
+Node 1 KernelStack:        2664 kB
+Node 1 PageTables:          888 kB
+Node 1 NFS_Unstable:          0 kB
+Node 1 Bounce:                0 kB
+Node 1 WritebackTmp:          0 kB
+Node 1 KReclaimable:      23896 kB
+Node 1 Slab:              73176 kB
+Node 1 SReclaimable:      23896 kB
+Node 1 SUnreclaim:        49280 kB
+Node 1 AnonHugePages:         0 kB
+Node 1 ShmemHugePages:        0 kB
+Node 1 ShmemPmdMapped:        0 kB
+Node 1 FileHugePages:        0 kB
+Node 1 FilePmdMapped:        0 kB
+Node 1 HugePages_Total:     0
+Node 1 HugePages_Free:      0
+Node 1 HugePages_Surp:      0
+
+B.1.fio.500M.1.O.32K Complete!
