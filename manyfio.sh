@@ -8,13 +8,19 @@ fi
 
 NAME="$(basename "$1")"
 BLOCKSIZE="4096"
+OPPOSITE="$(dirname "$(pwd)")"
 
 if [ ! -z $3 ]
 then
 	BLOCKSIZE="$3"
 fi
 
-for p in zero one two three four five
+RUNS="one"
+if [ "$OPPOSITE" = "O" ]
+	RUNS="zero one two three four five"
+fi
+
+for p in $RUNS
 do
 	FILENAME="$3fio.$NAME.$p$2"
 
