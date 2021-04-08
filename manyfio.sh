@@ -17,6 +17,7 @@ fi
 
 RUNS="one"
 if [ "$OPPOSITE" = "O" ]
+then
 	RUNS="zero one two three four five"
 fi
 
