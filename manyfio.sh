@@ -8,7 +8,7 @@ fi
 
 NAME="$(basename "$1")"
 BLOCKSIZE="4096"
-OPPOSITE="$(dirname "$(pwd)")"
+OPPOSITE="$(basename "$(pwd)")"
 
 if [ ! -z $3 ]
 then
