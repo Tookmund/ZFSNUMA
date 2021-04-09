@@ -15,7 +15,7 @@ then
 	BLOCKSIZE="$3"
 fi
 
-RUNS="one"
+RUNS="zero one"
 if [ "$OPPOSITE" = "O" ]
 then
 	RUNS="zero one two three four five"
