@@ -28,7 +28,7 @@ echo $@
 if [ "$PROGRAM" = "fio" ]
 then
 	EXTRACTOR="extract${PROGRAM}${FORMAT}.py"
-elif [ -z "${PROGRAM##*-simpleread}" ]
+elif [ -z "${PROGRAM##*simple*}" ]
 then
 	EXTRACTOR="extractrealtime.sh"
 fi
