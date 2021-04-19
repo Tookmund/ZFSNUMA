@@ -1,8 +1,9 @@
 set terminal svg
-set output "Runtime Old ZFS 1M Reads Small Process (Data Node 0).svg"
+NAME = "Runtime Old ZFS 1M Reads Small Process (Data Node 0)"
+set output sprintf("%s.svg", NAME)
 set logscale y 2
-set key autotitle columnhead
-set title "Runtime Old ZFS 1M Reads Small Process (Data Node 0)"
+set key autotitle columnhead top left
+set title NAME
 plot   "OldZFSSame.csv" using 2:xtic(1) \
             with lines lt rgb "dark-green" title "Same Node", \
        "OldZFSDifferent.csv" using 2:xtic(1) \
