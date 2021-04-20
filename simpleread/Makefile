@@ -1,4 +1,5 @@
 TARGETS = simpleread \
+		  1M-simpleread \
 		  2M-simpleread \
 		  4M-simpleread \
 		  8M-simpleread \
