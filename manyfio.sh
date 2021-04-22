@@ -15,15 +15,15 @@ then
 	BLOCKSIZE="$3"
 fi
 
-RUNS="zero one"
+RUNS="0 1"
 if [ "$OPPOSITE" = "O" ]
 then
-	RUNS="zero one two three four five"
+	RUNS="$(seq 100)"
 fi
 
 for p in $RUNS
 do
-	FILENAME="$3fio.$NAME.$p$2"
+	FILENAME="$3fio.$NAME.R$p-$2"
 
 	if [ -f "$FILENAME" ]
 	then
