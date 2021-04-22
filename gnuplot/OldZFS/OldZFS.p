@@ -7,7 +7,7 @@ set title NAME
 set xlabel "File Size"
 set ylabel "Runtime (seconds)"
 plot   "OldZFSSame.csv" using 2:xtic(1) \
-            with lines lt rgb "dark-green" title "Same Node", \
+            with lines lt rgb "blue" title "Same Node", \
        "OldZFSDifferent.csv" using 2:xtic(1) \
-            with lines lt rgb "orange" title "Different Node"
+            with lines lt rgb "red" title "Different Node"
 

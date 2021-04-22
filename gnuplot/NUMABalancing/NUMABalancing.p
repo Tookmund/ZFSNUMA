@@ -7,7 +7,7 @@ set title NAME
 set xlabel "File Size"
 set ylabel "Runtime (seconds)"
 plot   "1MSimpleReadsNUMABalancingSame.txt" using 2:xtic(1) \
-            with lines lt rgb "dark-green" title "Same Node", \
+            with lines lt rgb "blue" title "Same Node", \
        "1MSimpleReadsNUMABalancingDifferent.txt" using 2:xtic(1) \
-            with lines lt rgb "orange" title "Different Node"
+            with lines lt rgb "red" title "Different Node"
 
