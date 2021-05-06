@@ -1,6 +1,6 @@
 set terminal svg
 set output "ReadSizeImprovement.svg"
-set title "50% Latency Percentage Improvement"
+set title "50th Percentile Latency Percentage Improvement"
 set xlabel "File Size"
 set ylabel "Read Size"
 set zlabel "Improvement (percentage)" rotate by 90
