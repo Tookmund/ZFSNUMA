@@ -1,0 +1,12 @@
+Non-Uniform Memory Access imposes unique challenges on every component of an operating system and the applications that run on it.
+One such component is the filesystem which, while not directly impacted by NUMA in most cases, 
+typically has some form of cache whose performance is constrained by the latency and bandwidth of the memory that it is stored in.
+One such filesystem is ZFS, which contains its own custom caching system, known as the Adaptive Replacement Cache.
+This work looks at the impact of NUMA on this cache via sequential read operations, 
+shows how current solutions intended to reduce this impact do not adequately account for these caches,
+and develops a prototype that reduces the impact of memory affinity by relocating applications to be closer to the caches that they use. 
+This prototype is then tested and shown, in some situations, to restore the performance that would otherwise be lost.
+
+
+% use \newline to start a new paragraph
+% I don't know why '\\' (to start newline) not working here. -- Shanhe

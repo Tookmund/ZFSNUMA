@@ -1,0 +1,12 @@
+diff --git a/mm/mempolicy.c b/mm/mempolicy.c
+index d0d24abd1733..8d5df0246151 100644
+--- a/mm/mempolicy.c
++++ b/mm/mempolicy.c
+@@ -1154,6 +1154,7 @@ int do_migrate_pages(struct mm_struct *mm, const nodemask_t *from,
+ 	return busy;
+ 
+ }
++EXPORT_SYMBOL_GPL(do_migrate_pages);
+ 
+ /*
+  * Allocate a new page for page migration based on vma policy.

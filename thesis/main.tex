@@ -1,0 +1,1331 @@
+\chapter{Introduction}
+Data access is a critical component of modern computing and often the bottleneck of performance for many applications,
+especially as processors have continued to get faster and faster over time.
+Because data storage that is the quickest to access is also the most expensive, 
+all the data in a system cannot be available at one time equally quickly,
+and instead a hierarchy of data access was created, where the higher levels can store less data but are quicker to access and the
+lower levels can store more data but are slower to access.
+This fundamental principle of computing was a major consideration in the design of
+computers as long ago as 1946\cite{burks_preliminary_1946}.
+
+\begin{figure}[H]
+    \centering
+    \resizebox{0.5\linewidth}{!}{\input{diagrams/Memory Hierarchy}}
+    \captionsetup{width=0.5\linewidth}
+    \caption{Memory Hierarchy}
+    \label{fig:memoryhierarchy}
+\end{figure}
+
+At the top of this hierarchy are registers directly stored on the processor, and at the bottom are disks,
+slow but vast in size.
+The organization of this lowest level of the memory hierarchy, and efficient use of the higher levels that have become more
+complex over time,
+is the subject of this thesis.
+Specifically the filesystem, which organizes the data stored on disks, has become more powerful over time, allowing
+data to be spread out among multiple disks and ensuring it remains exactly as it was stored, despite the limitations
+of every layer of the system.
+One of these modern filesystems is ZFS, which is the focus of this work.
+ZFS handles its own interactions with the higher levels of the memory hierarchy, specifically RAM,
+unlike most other filesystems on Linux, an operating system kernel in common use for the most powerful computers today.
+
+The RAM layer of the memory hierarchy has become more complex over time, as processors have become more and more powerful.
+Thus ZFS's methods for improving its own performance with RAM-based caching are no longer optimal on some systems.
+This work investigates methods for optimizing them on these new systems and one particularly interesting new method showed
+promising, though limited, results.
+
+\chapter{Filesystems}
+Filesystems are a critical part of modern computing, providing long term storage of data.
+Many different filesystems exist today, including FAT\footnote{A filesystem that is still ubiquitious today, 
+despite lacking any of the features that are discussed in this paper.},
+NTFS, Ext4, HFS+\footnote{NTFS, Ext4, and HFS+ are filesystems known for having journaling capabilities, 
+and are the default filesystems for Windows, Linux and MacOS respectively.
+NTFS also allowed for a major increase in the maximum size of files, which was previously limited to 4 GB on FAT.}, 
+BTRFS, and ZFS\footnote{BTRFS and ZFS are newer modern filesystems that both support generally the same set of features,
+though ZFS is known for being more stable and is the focus of this work}.
+Some filesystems are much simpler, working with only one disk and providing only a journaling system to recover from system crashes
+or other inconsistencies.
+Others, like BTRFS and ZFS, are much more complex, allowing users to store vast amounts of data over multiple disks.
+
+Journaling is a method used by filesystems to recover from inconsistencies found on disk.
+They record what operations they intend to perform on the disk in a separate area before actually making any changes.
+Thus if they are interrupted when writing out data, the journal can be used to complete that operation when the system boots up again.
+Working with multiple disks can be done with any filesystem through the use of a volume manager,
+but there are distinct advantages to having native support for multiple disks, as discussed in Section \ref{chapter:volumemanagers}.
+
+\section{Blocks}
+\label{chapter:blocks}
+Blocks are the fundamental unit of a filesystem.
+They are typically fixed-sized units on a disk referred to by their offset from the start of the disk.
+There are two types of blocks, which filesystems combine to allow them to store variably-sized, non-contiguous structures,
+which are most commonly files.
+These two types are direct blocks, those that simply store the user's data, and indirect blocks, which store pointers to other blocks,
+either indirect or direct.
+The root block of a file is then always a form of indirect block, which can then point to either some direct blocks if the file is very small,
+or more likely a set of indirect blocks that themselves point to more indirect blocks and eventually direct blocks,
+with the number of intermediate layers depending on the size of the file.
+
+\begin{figure}[H]
+    \centering
+    \resizebox{0.5\linewidth}{!}{\input{diagrams/DirectIndirectBlocks}}
+    \captionsetup{width=0.5\linewidth}
+    \caption{Direct and Indirect Blocks. Directly pointing to a data block makes it a level 0 block,
+    while pointing to one indirect block before the data block makes it level 1, two indirect blocks
+    makes it level 2, and so on.}
+
+    \label{fig:directindirectblocks}
+\end{figure}
+
+Using blocks allows filesystems to have variably-sized non-contiguous data structures, which is critical when storing structures
+like files that can be widely varying in size.
+
+\section{Volume Managers} 
+\label{chapter:volumemanagers}
+Typical filesystems require a volume manager when working with multiple disks.
+This is because the typical filesystem can only work with one disk as a time.
+Volume managers solve this problem by acting as an intermediate layer between the filesystem and a set of disks,
+making them appear as one logical disk to the filesystem.
+They can be organized in a variety of ways to provide redundancy, as discussed in the next chapter.
+They can also subdivide one disk, or even one disk partition into smaller units that can be extended as needed.
+
+Modern filesystems, like ZFS and BTRFS, no longer require this intermediate layer, instead building in support for multiple disks
+and disk sharing between filesystems directly.
+This allows for more fine-grained control of where data will be stored, at the expense of each filesystem having to design its own method
+for spreading its data across multiple disks in various configurations, such as mirroring and RAID.
+
+\section{Mirrors and RAID}
+When a filesystem is made up of more than one disk, data can be arranged in different strategies to prevent any one disk
+failure from losing all of your data.
+For simpler filesystems without multiple disk support this is all handled by the volume layer,
+but some more advanced filesystems handle this themselves.
+The most conservative of these strategies is mirroring, or RAID-1, where all data is duplicated exactly on multiple disks,
+with the filesystem only having access to one disk's worth of storage\cite{patterson_case_1988}.
+This solution dramatically reduces the amount of storage available but ensures all data is easily recoverable in
+the event of a disk failure.
+Beyond this are the levels of RAID, that trade off various amounts of disk storage for redundancy, adding parity bits and other
+tricks in order to ensure data recovery if only some number of disks are lost.
+Some RAID configurations have parity information all on one disk or a set of disks, 
+allowing any one disk, or some number of disks, but not all the parity disks, to fail while still recovering all data.
+Others spread the parity information out among all the disks, reducing the redundancy but allowing for many writes at once,
+not being constrained by having to always write to the parity disk.
+
+When this is handled by the filesystem, it can use what it knows about the redundancy of the data to transparently repair
+the filesystem, rewriting data if it detects that one of the redundant copies has become corrupted or was incorrectly
+written to disk.
+This requires some kind of corruption detection mechanism, but such a mechanism is typically a standard part of a RAID configuration.
+
+\section{State Consistency}
+One goal of every filesystem is to never be in an unrecoverable state on disk
+\cite{ahrens_openzfs_basics,mckusick_zfs_2015_presentation}.
+Most filesystems handle this situation through a journal system and a filesystem check, also known as \texttt{fsck},
+that can restore the filesystem to a working state, even if a write is interrupted.
+Other filesystems, such as ZFS and BTRFS, try to categorically eliminate this source of failure through a Copy on Write
+model.
+Copy on Write means that any changes to a file will result in a write to an entirely different part of the disk, instead of 
+overwriting the previous contents of the file.
+This means that even if a write fails, the filesystem will simply appear to be in exactly the same state as before, because
+only overwriting the root block, or \textit{superblock}, of the filesystem actually changes its state in a destructive way, 
+linking up all the new, and usually some old, blocks into the filesystem all at once.
+
+\begin{figure}[H]
+    \centering
+    \resizebox{0.75\linewidth}{!}{\input{diagrams/ZFS COW}}
+    \captionsetup{width=0.75\linewidth}
+    \caption{Copy-on-write filesystems avoid changing any of the existing data on disk, and instead write all changes to new locations on disk\cite{ahrens_openzfs_basics}.}
+    \label{fig:cow}
+\end{figure}
+
+\chapter{ZFS}
+ZFS, formerly known as the Zettabyte Filesystem, is a filesystem developed originally for the Solaris operating system
+by Jeff Bonwick and Matt Ahrens \cite{ahrens_read_write}. 
+Its most innovative feature is combining the roles of volume manager and filesystem, which allows ZFS to pool storage in a way that 
+works much like allocating memory in a program\cite{mckusick_zfs_2015_presentation}.
+A storage pool can consist of multiple disks in various configurations, and all of the available storage of those disks
+can be used by any of the filesystems that are present in the pool.
+ZFS is also Copy on Write, as discussed above, which both ensures that the filesystem can never be in an inconsistent state on disk
+and allows for snapshots, as old versions can be kept around with ease by simply not deleting old blocks.
+Snapshots also only take up the extra space of their difference between the current state of the filesystem,
+as the blocks used by both are not duplicated, but instead simply pointed to by both the snapshot and live filesystem.
+
+\section{Block Pointers}
+Block pointers are the fundamental structure on which ZFS's most powerful features are built. 
+They are 128-byte structures that uniquely identify a block in a storage pool
+\cite{ahrens_openzfs_basics,ahrens_read_write,mckusick_zfs_2015_presentation}. 
+They can contain up to three different addresses for three different copies on different virtual devices, or VDEVs,
+that represent logical, not physical, disks.
+VDEVs can be just one physical disk, 
+or they can be a mirror, where multiple disks contain exactly the same data,
+or a RAIDZ pool,  where data are striped across multiple disks and a parity block is appended 
+so that data can be recovered in the event of a disk failure.
+These addresses are Data Virtual Addresses, and they contain a VDEV number, a size, as blocks can be variably-sized in ZFS, 
+though they default to 128K, and an offset, the distance in bytes from the start of the logical disk
+to the start of the block.
+By default, metadata are stored twice, and pool-wide metadata are stored three times.
+However, there can only be two copies if the pool is encrypted, as encryption key information is stored in the third DVA in the block pointer. 
+Pool-wide metadata are not encrypted and thus are not affected by this limitation, even though they
+are stored three times in the pool.
+
+\begin{figure}[H]
+    \centering
+    \resizebox{0.75\linewidth}{!}{\input{diagrams/ZFS Block Pointer}}
+    \captionsetup{width=0.75\linewidth}
+    \caption{A ZFS block pointer is a complex structure powering many of ZFS's most useful features\cite{ahrens_openzfs_basics}.}
+\label{fig:BlockPointer}
+\end{figure}
+
+The most important feature of block pointers is that they contain a 256-bit checksum of the data they point to.
+These checksums protect against failures of the initial write and allow detecting any corruption that might occur later
+when reading the data back from the disk.
+They also allow for reparing data on one side of a mirror, if the other side is uncorrupted, 
+as its correct data can then be written from the known-good side of the mirror and the corrupted data on the first side 
+can be deleted.
+Because block pointers are addresses, but also contain a checksum, they form a hash tree, also known as a Merkel tree, of addresses and checksums
+(Figure \ref{fig:HashTree}).
+Each checksum is also validating the checksum of the blocks below it in the tree as each block contains the checksum of
+its child blocks.
+Thus each layer of the tree can validate all of the data below it.
+
+\begin{figure}[H]
+    \centering
+    \resizebox{0.75\linewidth}{!}{\input{diagrams/Hash_Tree_Light}}
+    \captionsetup{width=0.75\linewidth}
+    \caption{
+        Block Pointers create a Merkel Tree allowing each layer to validate the blocks below it
+        \cite{azaghal_diagram_2012}. 
+        As long as Block 0 is known to be valid, the checksums within it ensure that blocks 1 and 2 can be proven to be valid, 
+        and also every other block, as 1 and 2 contain checksums of 3, 4, 5, and 6, which themselves contain the user's data.
+    }
+\label{fig:HashTree}
+\end{figure}
+
+\section{ZIL}
+The ZFS Intent Log is the ZFS's journal  \cite{ahrens_read_write}.
+It functions like a journal in other filesystems, ensuring synchronous writes without flushing everything to disk and 
+requiring a bunch of rewrites every time fsync is called. 
+These fsync operations are intended to force all data to be written to disk,
+but instead on ZFS only the ZIL is synced to disk.
+This allows these operations to be fast without actually having to write all the new direct and indirect blocks to the disks,
+but ensures that all data can be recovered by ZFS in the event of sudden power loss or crash before
+the next checkpoint is written to disk.
+
+The ZIL is a linked list of changes made to the filesystem.
+It works around the problem of pointers in a copy-on-write filesystem, which would typically require
+changing the previous block to have a pointer to the next block,
+by adding a new empty block to the end of list any time it adds more data.
+New data is then written to the first completely invalid block that it finds, 
+under the assumption that it is the final empty block.
+This allows it to not have to change the pointer address of previous blocks and keep ZFS's copy-on-write guarantees, 
+never rewriting the data of already written blocks in place.
+
+When ZFS restores from power loss, it gets the last good state of the current uberblock, the root block of the storage pool,
+and then updates write by write to the last write that was synced to the ZIL \cite{mckusick_zfs_2015_presentation}.
+
+\section{Checkpoints and Snapshots}
+After a certain amount of writes to the pool accumulate, ZFS writes them out to the disks of the pool
+all at once as a checkpoint, or transaction group
+\cite{ahrens_read_write,mckusick_zfs_2015_presentation}.
+It must first collect all updates that have happened since the last checkpoint from the ZIL
+and then write them out to unused locations in the pool before finally writing a new uberblock for the entire pool.
+Uberblocks are used in a rotation as checkpoints happen, with a set of either 128 or 256, depending on the disk's physical block size.
+
+Because ZFS works on a system of checkpoints and copy-on-write storage, snapshots are trivial for the filesystem to keep around.
+It must simply save the root block of the filesystem at a given point in time.
+Deleting them, however, is much trickier, because it is difficult to find the blocks that only exist in that snapshot
+when it is deleted.
+This is critical to do, as a block can only be freed if everything referencing it no longer needs it.
+Birth time is used to figure out if any snapshots need a particular block when ZFS is deleting a snapshot.
+The original copy-on-write filesystems used garbage collection, but this was very slow.
+ZFS instead uses a deadlist of what blocks the snapshot no longer cares about relative to the snapshot right before it.
+
+\section{On-Disk Structure}
+ZFS's on-disk structure starts with an uberblock, the root block for the entire pool 
+\cite{ahrens_read_write,mckusick_zfs_2015_presentation}.
+The uberblock points to the Meta-Object-Set, or MOS, which is a set that keeps track of everything in the pool such as
+filesystems or snapshots, as well as clones, copies of a filesystem that are themselves filesystems, 
+and ZVOLs, large files stored in ZFS outside of a filesystem that are intended to be used as disks for virtual machines.
+ZFS treats all of these on-disk objects as sets of sets, and they are implemented through direct and indirect blocks,
+which allows these sets to be arbitrarily large (Section \ref{chapter:blocks}).
+The first object in the Meta-Object-Set is a master object set that contains information about the pool itself.
+The last is the space map, which keeps track of which blocks onare free and which are being used over the entirety of
+every disk in  the ZFS storage pool.
+Each object in the MOS is itself an object set that describes the objects within it.
+For example, filesystem objects are a set of files, directories, and symlinks, files that simply reference another file and are
+treated by most programs as exactly the same as the files they link to.
+Objects are also implemented in the same way as object sets, pointing to indirect blocks which eventually point to direct blocks which 
+contain the data that makes up the object.
+
+\begin{figure}[H]
+    \centering
+    \resizebox{!}{0.2\textheight}{\input{diagrams/ZFSOnDiskStructure}}
+    %\captionsetup{width=0.75\linewidth}
+    \caption{On disk a ZFS pool consists of a set of object sets\cite{mckusick_zfs_2015_presentation}.
+    The first layer is the Meta-Object Set, consisting of the filesystems, snapshots, and other components
+    that make up the storage pool, along with essential object sets like 
+    the master object set for metadata and the space map for storing what parts of the disks have
+    and have not been already filled with data.}
+    \label{fig:ZFSOnDisk}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \resizebox{!}{0.2\textheight}{\input{diagrams/ZFSOnDiskExample}}
+    %\captionsetup{width=0.75\linewidth}
+    \caption{A sample ZFS pool, with two filesystems and three snapshots \cite{mckusick_zfs_2015_presentation}.
+        When the snapshot and the filesystem are identical they point to the exact same object set,
+        while once they diverge the snapshot continues pointing to the same object set, which might still point to many of the same
+        objects if those files are unchanged between the snapshot and the filesystem.
+        In this example filesystem A and its two snapshots are all different from each other, so each points to its own object set.
+        Filesystem B, on the other hand, is the same as its one snapshot, so both point to the same object set.
+    }
+\label{fig:ZFSOnDiskExample}
+\end{figure}
+
+\section{VDEVs}
+ZFS implements mirrors and RAID-like configurations, known as RAIDZ, through Virtual Devices, or VDEVs.
+Storage in ZFS is implemented as a set of disks organized into a tree, with one root whose leaves are either
+physical devices, mirrors, or RAIDZ devices of various levels of redundancy.
+These mirror or RAIDZ devices have child devices which are the actual physical disks.
+Physical disks, on the other hand, are always the leaf nodes of the tree as they are what actually stores the data.
+
+\begin{figure}[H]
+    \centering
+    \resizebox{0.75\linewidth}{!}{\input{diagrams/VDEVExample}}
+    \captionsetup{width=0.75\linewidth}
+    \caption{A very simple VDEV configuration with four disks and two mirrors, each mirror with two disks.}
+    \label{fig:VDEVExample}
+\end{figure}
+
+\section{SPL}
+The SPL, or Solaris Portability Layer, is a major component of ZFS that allows it to work in Linux, 
+by wrapping Linux kernel interfaces to be more Solaris-like \cite{zfs}.
+This even includes redefining Linux kernel functions with entirely different interfaces in its headers.
+Most important low-level operations performed by ZFS are handled through the SPL, such as allocating memory or creating new threads.
+There are two major exceptions, which are disk operations and allocating ARC Data Buffers (Section \ref{chapter:ABD}).
+
+It was written by Brian Behlendorf at the Lawrence Livermore National Laboratory as part of the Laboratory's port of ZFS to Linux,
+which eventually became OpenZFS.
+It is a GPL-licensed kernel module, under the same license as the Linux kernel. 
+This is in order to use Linux functions that are only exported to modules licensed under the GPL.
+These functions cannot be used from ZFS directly as it is licensed under the CDDL.
+
+\section{The Many Components of ZFS}
+
+\begin{figure}[H]
+    \centering
+    \resizebox{!}{0.35\textheight}{\input{diagrams/ZFSOrganization}}
+    %\captionsetup{width=0.75\linewidth}
+    \caption{ZFS consists of many components working together to write and read data from disks.
+    This diagram depicts ZFS from the perspective of a file read operation,
+    including the VFS layer above it that actually calls into ZFS to start a read.}
+    \label{fig:ZFSOrganization}
+\end{figure}
+
+\subsection{ZPL}
+The ZPL is the ZFS Posix Layer \cite{dawidek_closer_2008}. 
+This component interfaces with the VFS, or Virtual Filesystem, layer above it, which handles filesystem operations to local or network
+filesystems.
+within the Linux kernel.
+All file operations within ZFS are actually organized as operations on objects, of which files are just one special type.
+Thus the ZPL must translate requests for file reads and writes into operations on specific objects in specific object sets.
+
+\subsection{ZAP}
+The ZAP is the ZFS Attribute Processor \cite{dawidek_closer_2008}. 
+It is a key-value store that is used primarily for directories, and it stores a mapping of names to objects in the object set.
+
+\subsection{DMU}
+The DMU is the Data Management Unit \cite{ahrens_read_write}. 
+Its primary job is to bundle operations into transactions, and hold the first layer of caching for the filesystem as a set of dbuf objects. 
+These dbuf objects are just metadata that points to data stored in the ARC, to avoid even having to ask the ARC for frequently accessed data.
+
+\subsection{ARC}
+The Adaptive Replacement Cache is ZFS's large in-memory cache \cite{ahrens_openzfs_basics, ahrens_read_write}.
+This cache consists of two internal dynamically-sized caches with different policies, a least recently used cache
+for data accessed only once and a least frequently used cache for data accessed multiple times.
+The ARC is the most important part of ZFS for the purposes of this work and is covered in more detail in Section \ref{chapter:ARC}.
+
+\subsection{ZIO}
+ZIO is the ZFS I/O Pipeline and it is the primary component of the SPA, or Storage Pool Allocator \cite{ahrens_read_write}.
+All operations performed on disks go through it. 
+It also handles compression, checksumming (and checksum verification), and encryption.
+
+There are many different ZIO queues, contained within a two-dimensional array in the per-pool spa object 
+\cite[{module/zfs/spa.c}]{zfs}.
+There are six  types of ZIO: read, write, free, claim, ioctl, trim, each with 4 queues of different priorities,
+issue, issue high, interrupt, and interrupt high.
+The ZIO scheduler considers five classes of I/O, prioritized in this order: synchronous read, synchronous write, asynchronous read, asynchronous write, and scrub or resilver.
+
+\section{A Read Operation in ZFS}
+A read operation to a filesystem in ZFS goes through almost every part of the filesystem and gives a good overview of how
+ZFS works.
+It is also the operation that this work focuses on improving.
+Each snapshot, filesystem, or clone has its own ZPL and DMU, but the ARC and SPA are shared per storage pool 
+\cite{ahrens_read_write}.
+
+\subsection{ZPL}
+The ZFS POSIX Layer is entrypoint from the Linux VFS, the Virtual FileSystem layer into ZFS \cite{ahrens_read_write,zfs}.
+The VFS is the common interface between Linux and all of its filesystems.
+It asks the ZPL for some amount of data from a specific file at a specific offset and gives it a buffer to fill.
+The ZPL then converts this information into a ZFS object via the ZAP and requests that from the DMU.
+
+\subsection{DMU}
+The Data Management Unit takes the object request from the ZPL and first looks to see if that object is cached in its internal cache
+\cite{ahrens_read_write,zfs}.
+This cache consists of DBUFs, or DMU buffers, which represent one logical block, one block of one file of one filesystem.
+Their actual content is just a reference to an ARC buffer (Section \ref{chapter:ARC}).
+If the DMU has all the DBUFs that are needed to satisfy this particular read, then it sends the data back to the ZPL.
+This is the quickest path through the read code available within ZFS, and is the best of best cases.
+
+Otherwise, the DMU will make a new DBUF and and locate the block pointers for the data requested.
+To do this it has to look for the indirect block parents that point to the blocks or the parents of those blocks,
+or the parents of the parents of those blocks, 
+continuing up the tree of blocks until it locates something in the DMU cache.
+The dnode of the file, which contains the root indirect block pointer of the file,
+will always be cached because the file reference passed by the VFS is a vnode that points to it.
+Once an indirect block is located, the chain of block pointers must then be fetched to eventually 
+find the block pointer for the actual data.
+These block pointers are then passed to the ARC to retrieve the data they point to.
+The ARC will eventually gives back a pointer to an ABD, which is then associated with the new DBUF.
+The prefetch engine is informed about all reads as they happen, in order to detect patterns and preemptively
+request data that it believes will be needed soon (Section \ref{chapter:prefetch}).
+
+The DMU also creates an empty ZIO root and passes it along to the ARC.
+This allows it to wait on this root which will be made the root of any disk operations that the ARC
+needs to perform in order to retrieve the data.
+By waiting on the root it will wait on all of its children, which requires waiting on their children, 
+which ensures that all required I/O has finished.
+This guarantees that once the wait is over all the data the DMU requested has been populated into the correct buffers
+and it can simply return that data to the user.
+
+\subsection{Prefetch}
+\label{chapter:prefetch}
+The prefetch engine looks for patterns in the requests that the DMU receives and preemptively requests the data that it thinks will be needed\cite{ahrens_read_write}.
+It tracks many streams of reads at once  to find those that are sequential in order to fetch the next blocks in those sequences.
+When it detects a read that is sequential to a previous read, it will request that the next
+few blocks in the sequence be loaded into the ARC.
+How many blocks it asks for depends on how successful prefetching has been previously, fetching
+more and more data up to 8 MB at a time if prefetching continues to correctly guess the data that will be
+accessed next\cite[{module/zfs/dmu.c} {module/zfs/dbuf.c}]{zfs}.
+This ensures that the data the process will be asking for is already in the ARC before it even needs it,
+which can speed up file accesses.
+
+\subsection{ARC}
+The Adaptive Replacement Cache is primarily a hash map of blocks indexed by block pointer, 
+so the first thing it does is check this hash map for the passed block pointer
+\cite{ahrens_read_write,zfs}.
+If it is already in the ARC, then it simply returns that cached data to the DMU.
+Otherwise, a new entry in the ARC, called an ARC header, is created.
+The ARC then invokes the ZIO pipeline to retrieve the data from the disks.
+
+\subsection{The ZIO Pipeline}
+ZIOs form a dependency graph, which lets lots of I/O be pending at once \cite{ahrens_read_write}. 
+Due to the format of ZFS on disk, one small read might depend on reading a large number of blocks, 
+depending on the size of the file.
+The indirect blocks that allow files to grow as large as needed also mean that more reads are required 
+in order to retrieve the data stored in the direct block from a disk.
+
+This system is especially beneficial to writes, as each indirect block can be added to the tree with a dependency on 
+all the data blocks below it, and once those are complete
+that indirect block can be written, regardless of how many other data blocks might still need to written.
+
+The goal of this complex dependency system is to keep all disks busy at all times whenever ZFS has to read or write data.
+As disks are the typically the bottleneck, being the slowest component of a typical modern system,
+it is important to maximize their throughput for the best performance.
+It also allows for easy representation of more complex data layouts, like mirroring or RAIDZ, 
+where the logical operation of writing a single block depends on multiple physical writes to disks.
+
+ZIOs also verify the checksums of the blocks they read, 
+which allows them to try and recover when those checksums show that data to be invalid.
+It can use the block pointer to find the locations of other copies of the data, if others were created, 
+and create new children ZIOs to get that data instead.
+Thanks to the checksum in the block pointer, it can then create another child ZIO to transparently write a new block
+containing the correct data to the corrupted side of the mirror, once it has found a valid copy.
+
+If the data being read is compressed or encrypted on disk, then a secondary buffer will be allocated for the on-disk data,
+and a decompression or decryption step will be added to the process via pushing a the required transformation 
+to the ZIO's transformation stack.
+Compression is almost always used in real deployments of ZFS, as it improves performance by allowing for fewer disk operations.
+
+This process begins with a logical ZIO associated with a block pointer, but these are transformed into
+child physical ZIOs for a specific VDEV and offset, based on the DVAs present in the block pointer,
+typically just picking the first DVA found in the block pointer.
+These physical ZIOs pass their data on to the logical ZIO, 
+which figures out if the read succeeded or if it needs to try a different DVA.
+
+A DVA might point to a non-leaf VDEV, that is a mirror or RAIDZ VDEV instead of a physical disk, 
+in which case more physical child ZIOs will be created to retrieve the data for the original physical ZIO.
+
+Eventually, there will be a ZIO associated with a leaf VDEV, at which point it is, finally, queued for being read from disk.
+Since disks can perform far fewer operations at once, ZIOs are prioritized and sorted by disk offset to avoid having to 
+unnecessarily seek the disk head when possible.
+The queue also aggregates small reads into larger reads when it finds that smaller reads currently queued are physically sequential on disk.
+
+The pipeline is given the next ZIO to execute and runs the relevant operation on disk, 
+which eventually calls Linux's \texttt{submit\_bio} function.
+In the case of a synchronous operation, it will call \texttt{zio\_wait} and execute ZIOs from the queue, in parallel with zio worker threads,
+until the passed ZIO, the root ZIO of all the required operations, is complete.
+
+\subsection{Completion}
+The ZIO pipeline will, after completing many, many ZIOs, populate an ARC buffer and call the ARC read done callback passed by the DMU, 
+which associates the passed ARC buffer with the relevant DBUF \cite{ahrens_read_write,zfs}.
+Once all the necessary DBUFs are in the DMU, then the data is copied into the buffer passed by the ZPL, which ultimately came from VFS layer and completes the read operation.
+
+\section{Adaptive Replacement Cache}
+\label{chapter:ARC}
+ZFS relies heavily on memory to ensure performance while retaining its always-consistent property \cite{ahrens_read_write}.
+The primary way in which this is done is the ARC, or the Adaptive Replacement Cache. 
+This cache works like a page cache in other filesystems, storing the contents of files that have been accessed
+in order to ensure quicker access to those files in the future and storing the contents of writes that have yet to be
+propagated to disk.
+
+The ARC consists of two dynamically-sized caches, one that follows a least recently used eviction policy 
+and another which follows a least frequently used eviction policy.
+The first contains data that has been accessed only once and the second contains data accessed twice or more \cite{megiddo_dharmendra_ARC}.
+A least recently used cache policy will discard that data which has been accessed least recently
+when filled and needing to add more data, as the name would suggest, 
+A least frequency used cache policy will discard instead that data which has been accessed least frequently, 
+that is the fewest number of times.
+These caches are hash tables of block pointers, so the ARC has no understanding of files, 
+delegating that to the abstraction layers above it.
+
+The relative size of these two caches is determined by a ghost cache. 
+The ghost cache contains the headers, but not the data, of all the recently evicted blocks
+along with which part of the cache they were stored in.
+When a cache miss occurs in the ARC, it checks the ghost cache to see if the data requested was recently stored.
+If it was, then the ARC will make the component of the cache that data was previous stored in larger and the other smaller,
+under the assumption that this would have helped the ARC perform better and have fewer cache misses.
+
+This combination of multiple cache types gives the ARC the important advantage of being scan-resistant,
+that is reading a very large file one time sequentially will not substantially degrade the performance of the cache.
+In simpler caching systems, such as a single LRU, reading data that is larger than the size of the cache will replace the entire
+contents of the cache.
+This is a problem, as one large file read can then destroy the performance of the cache on most systems,
+where often certain files are accessed quite frequently and should always been cached if memory allows.
+
+The ARC has also been extended in ZFS with fast disk storage, known as the L2ARC,
+while the in-memory ARC is now referred to within ZFS as the L1ARC.
+When configured, the ARC will use a faster disk, such as an SSD, as a secondary larger cache for speeding up access to your data.
+L2ARC is of course still slower than L1ARC, but it can be much larger than the L1ARC,
+because of the vast differences in size that generally exist between disks and RAM.
+
+\begin{figure}
+    \centering
+    \resizebox{0.75\linewidth}{!}{\input{diagrams/ARC Header}}
+    \captionsetup{width=0.75\linewidth}
+    \caption{ARC Headers, as depicted in comments in the ZFS ARC code \cite[{module/zfs/arc.c}]{zfs}.}
+    \label{fig:ARCHeaders}
+\end{figure}
+
+Internally the ARC is implemented as a hash table of headers, metadata structures that point to the actual contents of the blocks
+stored in the ARC.
+These header structures point to a set of buffer structures, which themselves point to ABD, ARC Buffer Data, structures
+containing the actual data.
+The first and most important of these buffers is the physical buffer, the ABD that contains the contents of the physical block on disk.
+Every header that is in the L1 ARC will have at least this buffer, though it is freed when the header moves to the ghost cache.
+
+Every time a block is requested from the ARC by a new consumer, a new entry is added to the consumer list, 
+called the buf list within the ARC, with its own data pointer to an ABD containing the requested data.
+A consumer is a higher level component of ZFS, such as a particular filesystem's DMU, 
+that needs to retrieve the data pointed to by a block pointer.
+This consumer buf structure is what the consumer receives back from the ARC when its data is available.
+
+What the ABD that the buf structure points to looks like depends on what the block's data actually looks like on disk.
+If the block requested is compressed or encrypted, than the ARC will need to allocate a new ABD to store the uncompressed data,
+which will then to pointed to by the new buf structure before it is returned to the consumer.
+If the data on disk is not compressed or encrypted, then the buf structure will just point to the physical ABD of the header,
+as no changes are needed in order for it to be used by the consumer.
+
+\subsection{ARC Buffer Data}
+\label{chapter:ABD}
+ARC data is stored in an \texttt{abd\_t}, an ARC Buffer Data structure, which allows the creation of both
+large contiguous, or linear, buffers and buffers that might consist internally of a series of equally-sized buffers allocated in different locations, 
+known as a scattered buffer \cite[{module/zfs/abd.c}]{zfs}.
+This allows ZFS to avoid having to find large contiguous chunks of memory for ARC buffers when the system is running low on memory 
+and  avoids having to map the entire buffer into the kernel's memory space when only part of it is accessed.
+Both types can be accessed using the same set of functions, allowing the use of scattered buffers instead of linear buffers
+wherever it appears useful, without having to change any consumers of those buffers.
+
+ABDs are allocated in terms of pages, attempting to allocate first from the local memory node, 
+but the allocation process prioritizes keeping as much of the 
+buffer as possible on the same node, which might not be the local node if its memory is very full.
+Unlike every other part of ZFS, it uses Linux's \texttt{alloc\_pages\_node} to directly allocate a set of pages
+from a specific area of memory (a specific NUMA node, explained in Chapter \ref{whatisnuma}).
+It does this to attempt to ensure the series of allocations that it makes are as close together as possible,
+regardless of whether they are close to the current process.
+This behavior is clever, but undesirable for the purposes of this project, as it means that larger allocations
+can be spread out over multiple areas, depending on the available memory.
+
+\subsection{Memory and the ARC}F
+The ARC requires large amounts of memory, but gives ZFS comparable or even faster performance than other filesystems in some 
+circumstances.
+However, this also means that ZFS is significantly affected by memory latency, more so than other filesystems, because they don't typically 
+read your files directly from memory.
+
+One development that has recently become quite important in improving high-performance systems, 
+is in the inclusion of a memory controller within each physical CPU\cite{lameter_numa_2013}.
+Now systems with multiple CPU sockets have multiple memory controllers, 
+meaning that the access latency to different parts of memory is no longer uniform,
+thus these new architectures came to be referred to as Non-Uniform Memory Access, or NUMA, architectures.
+
+\chapter{What is NUMA?}
+\label{whatisnuma}
+The traditional models of computing, the Turing Machine and the von Neumann architecture, 
+assume that all the memory a computer has is accessible in the same amount of time. 
+Programmers have followed this assumption, and have generally not cared about where exactly in memory their program's data are stored,
+or on what processors their programs run.
+
+However, as newer systems have gotten faster and faster, with more and more cores and memory, this fundamental assumption could no longer hold
+\cite{lameter_numa_2013}.
+As processors have become faster and more numerous in systems, the absolute distance between a processor and memory began to matter for latency.
+In order for memory to keep up, new system architectures had to be devised to allow memory to be closer and thus keep pace with faster processors.
+This was done, as outlined above, by integrating the memory controller directly into the CPU package, 
+allowing memory to be directly attached to the processor (Figure \ref{fig:UMAvsNUMA}).
+While this allows for much lower latency when accessing that memory from a processor in that socket, 
+it makes access to memory attached to any other socket very slow, as it first has to pass through a memory interconnect between sockets (Figure \ref{fig:LocalvsRemote}).
+This property of these architectures is known as NUMA, or \textit{Non-Uniform Memory Access}.
+A processor and its attached memory are together known as a node.
+
+\begin{figure}[H]
+    \centering
+    \resizebox{!}{0.25\textheight}{\input{diagrams/Uniform Memory Access}}
+    \resizebox{!}{0.25\textheight}{\input{diagrams/Non-Uniform Memory Access}}
+    \captionsetup{width=0.8\linewidth}
+    \caption{Uniform and Non-Uniform Memory Access}
+    \label{fig:UMAvsNUMA}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \resizebox{!}{0.25\textheight}{\input{diagrams/Local Non-Uniform Memory Access}}
+    \resizebox{!}{0.25\textheight}{\input{diagrams/Remote Non-Uniform Memory Access}}
+    \captionsetup{width=0.8\linewidth}
+    \caption{Local and Remote Memory Accesses}
+    \label{fig:LocalvsRemote}
+\end{figure}
+
+\section{Measuring the Impact of NUMA}
+\label{chapter:measuringnuma}
+Tools such as the STREAM benchmark, used to measure the bandwidth of memory based on the throughput of various operations
+performed on memory \cite{bergstrom_stream}.
+While originally used to measure CPU performance, ``On modern hardware, each of these tests achieve similar bandwidth,
+as memory is the primary constraint, not floating-point execution'' \cite{bergstrom_stream}.
+STREAM showed a 33\% reduction in bandwidth when accessing memory remotely, from a program running on one node to memory located
+on another node. This went up to 39\% when running with multiple threads, which of course caused contention over the interconnect,
+as it is shared between the multiple processors on the same CPU socket.
+
+Another tool used to measure the bandwidth and latency of machines with a NUMA architecture is the Intel Memory Latency Checker.
+The Intel MLC is likely to have a more reliable result as it is directly intended to measure NUMA latency and bandwidth,
+while STREAM only incidentally does so.
+Using this tool in my test environment, I found that there was about a 63\% increase in latency
+(66.8 nanoseconds locally versus 108.8 remotely) and about a 50\% reduction in bandwidth 
+(18405.1 MB/s locally versus 9284.0 remotely).
+Thus, there is a significant performance impact from NUMA, to both memory bandwidth and memory latency.
+
+\section{Linux and NUMA}
+The most important place for NUMA support is of course the operating system, and it has been supported in Linux since 2.5, with the current system
+of APIs and scheduler support added in version 2.6 \cite{dobson_linux_numa}
+\cite[{Documentation/admin-guide/mm/numa\_memory\_policy.rst}]{linux}.
+There are two main ways in which the operating system has to support NUMA. First, in memory allocation, so that a process can ask for memory from
+a specific node, and in the scheduler, so that a process can be kept on the socket closest to the memory that it uses.
+
+\subsection{Memory Policy}
+Linux uses memory policy to determine where an allocation should take place \cite[{Documentation/admin-guide/mm/numa\_memory\_policy.rst}]{linux}. 
+Typically, a process has a local memory policy, such that it prefers memory from the NUMA node closest to where it is currently running when possible. 
+Other configurations are possible for better performance in some scenarios, including preferring a specific node,
+or binding all memory allocated to a specific node, such that the process would rather an allocation fail if it was unable to allocate memory 
+from a specific node.
+Memory in Linux is allocated on a first touch policy, that is the process or thread that first accesses the memory determines the policy used to decide
+where that particular allocation will be located.
+As an example, if two threads had a local memory policy and one thread running on node 0 were to allocate some memory, but another thread running on a node 1 were to actually write to that
+memory, that allocation would be placed closest to the second thread on node 1.
+
+\section{Scheduling}
+Linux's scheduler is also aware of NUMA \cite[{Documentation/scheduler/sched-domains.txt}]{linux}.
+This allows it to attempt to keep processes within the same NUMA node.
+It uses a hierarchy of scheduling domains, which the scheduler tries to keep a process within while still balancing all running processes across
+all available processors. 
+These include not only the same NUMA node, but also the same physical CPU core or even the same virtual processor when possible.
+
+\section{Memory Reclamation}
+Linux generally will allocate all available memory for caching, as files are read from disks \cite{lameter_numa_2013}.
+Only when all system memory is running low does it release these memory caches, either those not in use or those least likely to be used,
+freeing them for use by the rest of the system.
+When memory runs low on a particular node, Linux usually just allocates on another node, unless the system has 4 or more nodes,
+at which point it frees memory from the local node when that node is low on memory.
+Unlike every other filesystem on Linux, ZFS does not utilize Linux's page cache, with the exception of when files are directly mapped into memory
+by a process.
+Thus it does not take advantage of this caching mechanism, instead using its own internal cache, the ARC (Section \ref{chapter:ARC}).
+This allows ZFS to have much more control of how it caches files and use a very clever caching policy, an Adaptive Replacement Cache.
+
+\section{How Does NUMA Affect Programs?}
+NUMA architectures mean that operating systems and programs need to be cognizant of where they allocate memory from in order to achieve maximum performance.
+Poor memory and CPU location can lead to substantially increased latency in most cases \cite{lameter_numa_2013}.
+
+\chapter{Mitigating the Effects of NUMA on ZFS}
+
+\section{Test Environment}
+
+All experiments were performed on a Dell PowerEdge 610 with two Xeon X5570 CPUs and 48 GB of RAM split evenly between them.
+This system has two NUMA Nodes, each with 4 processors, with each processor capable of hyperthreading
+and thus running two processes at once.
+The NUMA nodes are connected directly via Intel's Quick Path Interconnect,
+their first NUMA interconnect system \cite{kochhar_optimal_2009}.
+Each node has 24 GB of DDR3-1066 RAM.
+The system has three disks, two root disks, each 67.77 GiB in size,
+mirrored by the BIOS (one of which failed during testing),
+that were used to store the operating system, the testing scripts, and the test results,
+and one ZFS disk, 68.38 GiB in size, used only to store the files used in testing.
+
+Every data point shown is the average of three distinct tests, in order to ensure the effects that are visible in the data are not the result of
+any particular test run, but instead are consistent and repeatable.
+
+\subsection{Automatic Testing}
+To guarantee a clean test environment, the machine was rebooted between each test.
+However, the machine used for testing took around 10 minutes to reboot, so manually running multiple tests in a row
+quickly became very tedious.
+
+In order to run many tests in a row, I wrote a collection of scripts in Python 3 and Bash 
+to measure the differences between file accesses on different nodes.
+Each test run was started by an \texttt{rc.local} script that would run on each boot.
+This script would trigger \texttt{autotest.py}, which would then look for new tests to be run based on 
+the file names within the test-run folder.
+The name of each test run would inform the script which version of ZFS needed to be loaded,
+either a modified version, or a standard release version of ZFS to compare against,
+which test to run, and what file to test against.
+
+The script automatically rebooted the machine at the end of each test.
+However, care was taken to ensure that it would not reboot if there were no more test runs needed, so that the machine
+would not enter a boot loop and become inaccessible.
+
+A ZFS filesystem was created with ZFS version 0.8.5 and populated with a set of files full of randomly generated data
+of various sizes, which were then used to test the performance of reading files from ZFS.
+
+The \texttt{numactl} program was used to control which processors the test program ran on, as it allows you to set what nodes a program is permitted
+to run on before executing it.
+
+\begin{figure}
+    \centering
+    \resizebox{!}{0.6\textheight}{\input{diagrams/TestingFlowChart}}
+    \captionsetup{width=0.75\linewidth}
+    \caption{A flowchart of how automatic testing worked.}
+    \label{fig:testflowchart}
+\end{figure}
+
+Either fio\cite{fio} or simpleread (Listing \ref{lst:simplereadinline}) was used as the test program, 
+with fio measuring itself and simpleread timed by the time command.
+
+fio is the Flexible I/O Tester, written by Jen Axboe\cite{fio}.
+It is a powerful tool for benchmarking the performance of every possible kind of read and write operation on Linux.
+I simply used its sequential read capabilities with known files on my test ZFS filesystem to get more accurate measures of
+latency and bandwidth, as fio accurately times each individual read operation in order to calculate its statistics.
+Through these measurements it can calculate various percentiles of latency and also read bandwidth. 
+These metrics were invaluable for detecting differences in read operations between my prototype and normal ZFS.
+
+\section{Demonstrating the Effects}
+As a direct demonstration of the effects of NUMA on ZFS, consider this simple file-reading program (Listing \ref{lst:simplereadinline}).
+It takes a filename and a read size, how many bytes to read at once, and reads through the entire file sequentially before exiting.
+
+\singlespacing
+\lstinputlisting[caption={Simple Read Program},label={lst:simplereadinline},language=C]{code/simpleread.c}
+\doublespacing
+
+In order to measure the effects of memory latency on ZFS, I generated files full of random data on a ZFS filesystem.
+To get a sense of how file size affected the results of my tests,
+I generated files ranging in size from 128 KB to 16 GB, doubling in size each time.
+However, the tests presented typically show results from 250 MB and up, as this is where the effects of NUMA become most visible.
+Tests involved reading these files with various programs, one file per boot to make sure the ARC and other kernel caches were fully flushed between tests.
+I ensured the ARC data being read was located on the
+right node by taking advantage of the fact that ZFS will initially load data into the ARC on the same node as the program that first requests it.
+Thus I simply ran this program once, bound to the correct node, before taking any measurements in order to ensure a consistent state of the ARC.
+
+Using run time as a coarse measurement of latency, we find that this program takes less time if run on the same node as the ARC data it is consuming, when that ARC data is 1 GB or larger.
+It improves from about 10\% less time for a 1 GB file up to a maximum of 15\% less time for a 16 GB file
+(Figure \ref{fig:OldZFS}).
+
+\begin{figure}[H]
+    \centering
+    \captionsetup{width=0.75\linewidth}
+    \resizebox{0.75\linewidth}{!}{\input{graphs/Runtime Old ZFS 1M Reads Small Process (Data Node 0)}}
+    \caption{Reading a file from a different node than the one its ARC data is stored on causes a 10-15\% loss of 
+        performance, proving that ZFS, specifically its ARC, is affected by NUMA.}
+    \label{fig:OldZFS}
+\end{figure}
+
+\section{How to Mitigate the Effects}
+Fundamentally, the performance loss observed comes from the need to pass data across the interconnect between NUMA nodes.
+The data needs to be close to the process that is reading it in order to get the best performance.
+
+When we find a process in this situation, reading data from another node, there are two ways we can fix it.
+Either all the data the process needs can be moved closer to the process, or we can move the process closer to its data.
+Regardless, some data will need to move across the interconnect, as the process's other memory allocations should continue to be local to it, 
+and not have to be accessed via the interconnect, as otherwise this will incur the same performance penalty we are trying to avoid.
+
+\chapter{NUMA Balancing}
+Linux attempts to prevent this kind of performance loss by tracking remote node memory accesses, and automatically moving memory to the node
+that uses it most \cite[{Documentation/sysctl/kernel.txt}]{linux}.
+It tracks this by periodically marking pages inaccessible in the page table and trapping the eventual page fault that occurs when 
+a process tries to access it.
+It then keeps statistics on which NUMA node the process is running on  when it accesses memory.
+A periodic scanning thread looks at these statistics for each process and decides if a page needs to be moved
+based on how often it was accessed from a different node.
+However, this operates only at the page level, meaning that by the time it figures out that a page needs to be moved,
+it is often too late to help speed up the memory accesses of a particular process.
+It also only scans once every second by default, so if your program takes less time than that the memory it accesses
+is not even considered for migration\cite[{kernel/sched/fair.c}]{linux}.
+
+Enabling NUMA Balancing and using the same simple read program as before, at best it manages to regain
+3\% of the lost performance (Figure \ref{fig:NUMABalance}).
+This is likely within the margin of error for these tests, as due to the way that the ARC allocates memory (Section \ref{chapter:ARC}),
+it is given physical pages by the Linux kernel and thus the kernel is unable to move them around as it would be if the ARC
+asked for virtual memory.
+
+\begin{figure}[H]
+    \centering
+    \resizebox{0.75\linewidth}{!}{\input{graphs/Runtime Old ZFS 1M Reads NUMA Balancing Small Process (Data Node 0)}}
+    \captionsetup{width=0.75\linewidth}
+    \caption{Repeating the previous testing with NUMA Balancing enabled does not improve performance when accessing the ARC from a different node.}
+    \label{fig:NUMABalance}
+\end{figure}
+
+Other testing repeatedly reading a file from a different node with NUMA Balancing enabled confirms this,
+as the read latency never improves and is always higher than a read from the same node as the ARC data.
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}{0.4\linewidth}
+        \resizebox{0.9\linewidth}{!}{\input{graphs/50th Percentile Latency Old ZFS 1M Reads NUMA Balancing 100 fio Runs (Data Node 0)}}
+        \captionsetup{width=0.9\textwidth}
+        \caption{50th percentile latency sees no change at all over 100 runs with NUMA Balancing enabled.}
+    \end{subfigure}
+    \begin{subfigure}{0.4\linewidth}
+        \resizebox{0.9\linewidth}{!}{\input{graphs/90th Percentile Latency Old ZFS 1M Reads NUMA Balancing 100 fio Runs (Data Node 0)}}
+        \captionsetup{width=0.9\textwidth}
+        \caption{90th percentile latency sees no significant change at all over 100 runs with NUMA Balancing enabled.}
+    \end{subfigure}
+    \captionsetup{width=0.80\linewidth}
+    \caption{Repeatedly reading data from the ARC does not trigger NUMA Balancing, likely because it does not consider kernel memory like the ARC.
+    If NUMA Balancing was occurring the different node latency would converge towards the same
+    node latency. Note that the same node latency is only from the initial test run on the same node
+    after priming the ARC to ensure that it would not interfere with NUMA Balancing by adding more
+    reads from the same node. It is extended across the graph to provide a point of reference.}
+    \label{fig:100NUMABalance}
+\end{figure}
+
+Investigating the Linux NUMA balancing code confirms what this graph show by experimentation, that ARC memory is not considered
+Only memory that is part of a specific process is considered and even then only after that process has been running for one full second
+\cite[{kernel/sched/fair.c}]{linux}.
+
+\chapter{Task Migration}
+Task migration is moving a process automatically closer to the data that it is reading, if we find that the process is on a different node than that data.
+This requires storing the current node number in the ARC header structure, 
+and moving the current task and all of its memory to that same node if it is not running there already.
+This will invalidate the CPU caching that has built up over the course of the process's current run time,
+but will guarantee that the process will be local to the chapter of the ARC currently being accessed.
+
+My expectation was that above a certain threshold of file size, 
+the overhead from remote node accesses would be high enough that a significant performance improvement
+would be visible in the results.
+Ideally, this would mean a restoration of all lost performance from these remote node accesses.
+Assuming the overhead from moving the process and its memory is not too high,
+then a performance improvement should occur, as future memory accesses to that same part of the ARC become local node
+accesses instead of remote node accesses.
+
+\section{Implementing Task Migration}
+% https://github.com/openzfs/zfs/compare/zfs-0.8.5...Tookmund:arcprocessmigrate-0.8.5
+In order to implement task migration, I had to modify both the Linux Kernel and OpenZFS.
+The initial step was to add code allowing ZFS to migrate the current process to another node, 
+as such functionality is not currently available to kernel modules like ZFS in Linux.
+Linux is rather conservative about the functionality it exposes to kernel modules,
+and this allows one to take fairly direct control over the location of any process's memory,
+which is more than any kernel module would typically need.
+Something like this would usually be implemented in the scheduler or the page cache,
+both of which are part of Linux itself, and thus would not need this functionality exported.
+This required three steps, first moving the process to the correct NUMA node, then ensuring it will allocate new memory
+only from that new node, and finally moving all of the process's current memory
+allocations to the new node.
+
+Every process in the Linux kernel has a task structure, which contains various pieces of information about that task.
+By modifying this structure inside Linux or one of its modules, like ZFS, 
+one can control how the process is scheduled, and where its memory is located.
+This structure for the current process, in whose context this code is executing, 
+can always be referred to by the \texttt{current} macro within the Linux kernel, or, 
+within the SPL or ZFS as \texttt{curthread}, because that is what the structure was called on Solaris.
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}{0.4\textwidth}
+        \centering
+        \resizebox{0.9\linewidth}{!}{\input{diagrams/All cpumask and nodemask}}
+        \captionsetup{width=0.9\textwidth}
+        \caption{The default processors and memory a process is allowed to use is typically all of them available on the system.}
+        \label{fig:defaultmasks}
+    \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \centering
+        \resizebox{0.9\linewidth}{!}{\input{diagrams/Half cpumask and nodemask}}
+        \captionsetup{width=0.9\textwidth}
+        \caption{The default masks used in testing, in order to ensure that a process was running in a known location.
+        This configuration was also mirrored to the other node to ensure that there were not differences between nodes, 
+        but they performed identically throughout testing.}
+        \label{fig:testingmasks}
+    \end{subfigure}
+    \captionsetup{width=0.8\textwidth}
+    \caption{Each process has a specific set of processors it is allowed to run on and NUMA  nodes that it is allowed to allocate memory from.}
+\end{figure}
+
+The first step, changing where a process is running, was quite straightforward.
+Linux provides a convenient interface to inform the scheduler where a process is allowed to run.
+By default, a program is allowed to run anywhere (Figure \ref{fig:defaultmasks}), 
+but for testing purposes programs were typically restricted to one NUMA node at the start, 
+in order to simplify data collection (Figure \ref{fig:testingmasks}).
+By restricting this set of processors to only those in a specific NUMA node,
+we can ensure that the scheduler runs a process on that specific node.
+This interface is a bitmask, a set of bits, one per each processor in the system, 
+where each bit that is set to 1 is a processor that is allowed, and each bit that set to 0 is a processor that is not allowed.
+Each NUMA node typically has multiple processors, in the case of my test system each node has four processors. 
+Linux also provides a convenience function, \texttt{cpumask\_of\_node}, that can convert a simple node number to a bitmask
+of processors, referred to internally in the Linux kernel as a cpumask.
+This cpumask can then be passed, along with the task structure of the current process,
+to the \texttt{set\_cpus\_allowed\_ptr} function, which will correctly set the cpumask of process whose
+task structure is passed to it (Listing \ref{lst:linux_set_cpus_allowed}).
+
+\begin{figure}[H]
+    \centering
+    \resizebox{0.5\linewidth}{!}{\input{diagrams/setcpusallowed1}}
+    \captionsetup{width=0.6\linewidth}
+    \caption{A visual representation of what calling \texttt{set\_cpus\_allowed\_ptr(curthread, cpumask\_of\_node(1))}
+    does to the allowed processors of the current process.}
+    \label{fig:setcpusallowed1}
+\end{figure}
+
+\singlespacing
+\begin{lstlisting}[caption={The relevant chapters of Linux's scheduler code that handles a change in the cpumask indicating where a process is allowed to execute},label={lst:linux_set_cpus_allowed},language=C]
+// include/linux/sched.h
+struct task_struct {
+// ...
+	int				nr_cpus_allowed;
+// ...
+	cpumask_t			cpus_mask;
+// ...
+}
+// kernel/sched/core.c
+// set_cpus_allowed_ptr calls __set_cpus_allowed_ptr(p, new_mask, 0)
+/* Change a given task's CPU affinity. Migrate the thread to a
+ * proper CPU and schedule it away if the CPU it's executing on
+ * is removed from the allowed bitmask.
+ */
+static int __set_cpus_allowed_ptr(struct task_struct *p, 
+                                  const struct cpumask *new_mask, bool check)
+{
+	const struct cpumask *cpu_valid_mask = cpu_active_mask;
+	unsigned int dest_cpu; struct rq_flags rf; struct rq *rq; int ret = 0;
+	rq = task_rq_lock(p, &rf); update_rq_clock(rq);
+// ...
+	do_set_cpus_allowed(p, new_mask); // See Listing 3, new_mask is from cpumask_of_node
+// ...
+	/* Can the task run on the task's current CPU? If so, we're done */
+	if (cpumask_test_cpu(task_cpu(p), new_mask)) goto out;
+	if (task_running(rq, p) || p->state == TASK_WAKING) {
+		struct migration_arg arg = { p, dest_cpu }; 
+		/* Need help from migration thread: drop lock and wait. */
+		task_rq_unlock(rq, p, &rf);
+        stop_one_cpu(cpu_of(rq), migration_cpu_stop, &arg);
+		return 0;
+	} else if (task_on_rq_queued(p)) {	// dropping lock immediately anyways
+	    rq = move_queued_task(rq, &rf, p, dest_cpu);
+	}
+out:
+	task_rq_unlock(rq, p, &rf);
+	return ret;
+}
+\end{lstlisting}
+\begin{lstlisting}[caption={The relevant chapters of Linux's scheduler code that set a process's cpumask},label={lst:linux_set_cpus_allowed_common},language=C]
+// do_set_cpus_allowed always calls this function
+// A structure of function pointers is involved, 
+// but for the normal scheduler it simply points to this function 
+void set_cpus_allowed_common(struct task_struct *p, const struct cpumask *new_mask)
+{
+	cpumask_copy(&p->cpus_mask, new_mask);
+	p->nr_cpus_allowed = cpumask_weight(new_mask);
+}
+\end{lstlisting}
+\doublespacing
+
+The second step, changing where the process was allowed to allocate new memory from, was quite similar.
+As with the processors allowed, the task object also contains a bitmask indicating which memory it is allowed to use,
+which also defaults to all nodes (Figure \ref{fig:defaultmasks}),
+but was set to one node for testing purposes (Figure \ref{fig:testingmasks}).
+This takes a slightly different kind of bitmask, a nodemask that indicates which nodes the process is allowed
+to allocate memory from, and it also only operates on the current process.
+
+\begin{figure}[H]
+    \centering
+    \resizebox{0.5\linewidth}{!}{\input{diagrams/setmemsallowed1}}
+    \captionsetup{width=0.5\linewidth}
+    \caption{A visual representation of what calling \texttt{set\_mems\_allowed(nodemask\_of\_node(1))}
+    does to the allowed memory of the current process.}
+    \label{fig:setmemsallowed1}
+\end{figure}
+
+\singlespacing
+\begin{lstlisting}[caption={The relevant chapters of Linux's scheduler code that handle the nodemask
+indicating where a process is allowed to allocate memory},label={lst:linux_set_mems_allowed},language=C]
+// include/linux/sched.h
+struct task_struct {
+// ...
+	/* Protection against (de-)allocation: mm, files, fs, tty, keyrings, mems_allowed, mempolicy: */
+	spinlock_t      alloc_lock;
+// ...
+	nodemask_t      mems_allowed;
+	/* Seqence number to catch updates: */
+	seqcount_t      mems_allowed_seq;
+// ...
+}
+// include/linux/cpuset.h
+static inline void set_mems_allowed(nodemask_t nodemask)
+{
+	unsigned long flags;
+
+	task_lock(current);
+	local_irq_save(flags);
+	write_seqcount_begin(&current->mems_allowed_seq);
+	current->mems_allowed = nodemask;
+	write_seqcount_end(&current->mems_allowed_seq);
+	local_irq_restore(flags);
+	task_unlock(current);
+}
+\end{lstlisting}
+\doublespacing
+The third step, however, was quite a bit more involved.
+Linux does have a system call, \texttt{migrate\_pages}, that allows a user to move the memory of a program from one node
+to another.
+However, system calls like \texttt{migrate\_pages} cannot be called directly from kernel modules like ZFS 
+for a variety of reasons,
+but knowing that this functionality already existed enabled me to look into where in the Linux kernel 
+this system call was implemented.
+
+It turns out that this system call is just a wrapper around the \texttt{kernel\_migrate\_pages} function, but this did not help
+as it still took arguments in the same way as \texttt{migrate\_pages}, so it could not be called from ZFS.
+However, within this function was the \texttt{do\_migrate\_pages} function, which does all of the actual work to migrate
+all of a process's memory from one node to another.
+This structure of \texttt{function} calling \texttt{kernel\_function} calling \texttt{do\_function} is a common construct
+in the Linux kernel.
+This function could actually be called from ZFS, but was not exported to kernel modules, as it had no security checks, 
+these all having been handled by \texttt{kernel\_migrate\_pages}.
+
+\singlespacing
+\lstinputlisting[caption={The entirety of my prototype patch to the Linux kernel, enabling the SPL to migrate a process's memory from one node to another. An actual patch to export this functionality could not just export this function. It would require another function with error checking to prevent misuse and would likely
+still not be accepted, as kernel modules are generally not allowed to modify the scheduler or move around the memory of a user's process in this way.}, label={lst:linuxpatchinline},language=diff]{code/linux.patch}
+\doublespacing
+
+Once I could access this function from within ZFS, I added two new functions to the SPL, the Solaris Portability Layer
+that is the interface between the Linux kernel and ZFS.
+The first was \texttt{spl\_migrate\_pages}, which simply did the work of the \texttt{kernel\_migrate\_pages} function,
+taking actual node numbers and a task structure and converting them to the arguments that \texttt{do\_migrate\_pages} actually
+takes, that is a common structure in Linux kernel interfaces.
+
+\singlespacing
+\begin{lstlisting}[caption={The \texttt{spl\_migrate} function, used to move the current process
+to another NUMA node},label={lst:splmigratefunction},language=C]]
+void
+spl_migrate(int node)
+{
+	if (node >= nr_node_ids || node < 0) {
+		pr_warn("SPL: Can't migrate to node %d!\n", node);
+		return;
+	}
+	set_cpus_allowed_ptr(curthread, cpumask_of_node(node));
+	set_mems_allowed(nodemask_of_node(node));
+	spl_migrate_pages(curthread, node);
+	if (curnode != node) {
+		pr_err(KERN_ERR "SPL: Failed to migrate task %s!\n", curthread->comm);
+		dump_stack();
+	}
+}
+EXPORT_SYMBOL(spl_migrate);
+\end{lstlisting}
+\doublespacing
+
+Now that the migration function was in place, it needed to be called from within OpenZFS.
+I first added a node number to the ARC header, the metadata structure for each block stored in the ARC discussed above
+(Section \ref{chapter:ARC}).
+Then, I modified the allocation method for ARC Buffer Data, to always prefer the current node when allocating memory (Section \ref{chapter:ABD}).
+When the allocating large ABDs, ZFS attempts to allocate them in large chunks, as big as the
+kernel will allow to fit all the data required. 
+However, if the data required is larger than the kernel has available in contiguous physical pages in memory
+then it will split up the buffer into a series of chunks, each of which points to the next,
+but can be used as one big buffer within ZFS thanks to some abstractions built on top of this structure.
+
+When allocating these chunks, ZFS will allocate from wherever is available, defaulting to the local node
+but detecting when Linux is unable to get enough memory from the local node and instead allocating
+from whatever remote node succeeded at allocating the previous large chunk.
+This could result in ABDs not located on the same node as the current process at all,
+and in the worst case could result in different parts of a buffer allocated on entirely different nodes,
+which would be extremely difficult to handle.
+To simplify this I removed this allowance, ensuring that this code would always try to allocate buffers
+from the current node.
+This would only have come into effect if one NUMA node ran out of memory.
+Finally, I modified the \texttt{arc\_read} function, which is called by the DMU if it cannot find the data it is looking
+for in its local cache.
+In the code path for returning data already in the ARC,
+I added code to check if the node number of this found ARC header was the same as the current node number that the process
+was running on, and move the process if they were different 
+For the specifics of this patch see Appendix \ref{sourcecode} Listing \ref{lst:arcpatch}.
+
+\chapter{Results}
+With task migration enabled in ZFS as implemented in the above prototype, we see significant improvements in runtime and latency
+for sequential file-access in many cases.
+Repeating the same tests used above to show a difference in local and remote node ARC access, we see a 10\%
+improvement in runtime for files larger than 1 GB with a 1 MB read size that grows to 15\% as file size increases 
+(Figure \ref{fig:smallresults}).
+
+\begin{figure}[H]
+    \centering
+    \resizebox{0.45\linewidth}{!}{\input{graphs/Runtime Different Node 1M Reads Small Process (Data Node 0)}}
+    \resizebox{0.40\linewidth}{!}{\input{diagrams/Remote Non-Uniform Memory Access}}
+    \captionsetup{width=0.85\linewidth}
+    \caption{Comparing ZFS with a modified version using task migration, a 10-15\% improvement is visible with task migration for files 1 GB and larger 
+        when the ARC data being accessed is on another NUMA node.}
+    \label{fig:smallresults}
+\end{figure}
+
+Most importantly, when comparing the results of remote node ARC access with task migration enabled to the optimal results
+running on the same node, we see that the task migration has managed to regain all of the performance that would otherwise be lost when accessing memory from a different node (Figure \ref{fig:optimal}).
+
+\begin{figure}[H]
+    \centering
+    \resizebox{0.75\linewidth}{!}{\input{graphs/Runtime Optimal 1M Reads Small Process (Data Node 0)}}
+    \captionsetup{width=0.75\linewidth}
+    \caption{Task migration with the ARC on a different node compared to starting the process on the same node.
+        The results are practically identical, showing that task migration can significantly improve performance without substantial
+        overhead in this scenario.}
+    \label{fig:optimal}
+\end{figure}
+
+The bandwidth of the reads, as measured with fio, also substantially improves (Figure \ref{fig:bandwidth}).
+Given that the memory and interconnect bandwidth on the test system are essentially the same,
+31.99 GB/s for the 48GB of DDR3 1066 RAM and 25.60 GB/s for the QPI, one would not expect use of the interconnect to affect bandwidth very much, with only about a 6\% difference between the two\cite{kochhar_optimal_2009}.
+However, testing shows that bandwidth is affected in a similar way as latency, with a fairly consistent 10\% improvement.
+
+\begin{figure}[H]
+    \centering
+    \resizebox{0.75\linewidth}{!}{\input{graphs/Bandwidth Different Node 2M Reads fio (Data Node 0)}}
+    \captionsetup{width=0.75\linewidth}
+    \caption{Bandwidth improves almost as much as latency when accessing ARC data from a remote node
+        with task migration.
+        Note that unlike most other graphs in this work this uses 2 MB reads,
+        but the results are consistent with 1 MB reads tested with previous versions of my prototype.}
+    \label{fig:bandwidth}
+\end{figure}
+
+This is a surprising result, as the theoretical memory bandwidth differences would indicate a much smaller improvement.
+However these numbers are consistent with other research into NUMA systems, 
+as the full bandwidth of the interconnect is shared between the nodes and thus highly variable
+depending on what other process running at the same time happen to require\cite{bergstrom_stream,li_characterization_2013,song_evaluation_2017}.
+These bandwidth results are also consistent with
+other tests performed on this machine, such as a single-threaded STREAM benchmark or the Intel Memory Latency
+Checker.
+Both show a significant reductions reduction in bandwidth for remote node memory access, as discussed 
+previously (Section \ref{chapter:measuringnuma}).
+Bandwidth, like latency, is restored to same level as if the ARC data and the program were originally
+located on the exact same NUMA node (Figure \ref{fig:bandwidthoptimal}).
+
+\begin{figure}[H]
+    \centering
+    \resizebox{0.75\linewidth}{!}{\input{graphs/Bandwidth Optimal 2M Reads fio (Data Node 0)}}
+    \captionsetup{width=0.75\linewidth}
+    \caption{Bandwidth, as with latency, is identical when on a different node with my task migration prototype
+        as compared on reads from the same NUMA node.}
+    \label{fig:bandwidthoptimal}
+\end{figure}
+
+\section{Impact of Process Size}
+The improvements seen with task migration enabled are not universal, however, and 
+the actual improvement visible to user programs is highly dependent on the size of the program.
+This is because when a process is moved to a different NUMA node all of its other memory allocations must be moved with it in order to see the full benefits of local memory access.
+Otherwise, the process will continue to cross the interconnect in order to access any memory that it allocated previously,
+and continue to incur the latency and bandwidth penalties associated accessing memory from a different NUMA node.
+By creating variants of my simple read program of various sizes, I was able to measure the difference
+in runtime improvement that resulted from differences in program memory size.
+
+In order to test different process sizes, a large array was added to the program, that was then filled with data so that it would not be 
+optimized away by the compiler.
+The size and existence of this array was determined by the \texttt{HUGE} macro, 
+defined on the \texttt{gcc} command line with \texttt{-D}, 
+so that different sized programs could be built from the exact same source code.
+
+Given that accessing ARC data for a file 1 GB or larger across the interconnect causes an approximately 10\% increase in
+runtime, which improves even more as the file size does, as discussed previously,
+transferring a larger process closer to that same size will likely have a similar impact, 
+reducing the improvement possible from task migration.
+With that knowledge, I can attempt a theoretical model of the performance improvement depending on the size of the process and the file.
+\begin{align*}
+    I &= \text{Performance Improvement} \\
+    M &= \text{Maximum Possible Improvement} \\
+    P &= \text{Process Size in Memory} \\
+    F &= \text{File Size} \\
+    R &= \text{Reduction Factor}
+\intertext{Given these variables, I would expect performance improvement to be determined by something like the following:}
+    I &= M-\left ( \frac{P}{F}\times R \right )
+\end{align*}
+
+From this theoretical model I would expect no improvement if the process and the file are the same size, 
+and to see the improvement slowly reduced as the size of the process in memory increases.
+Fundamentally, what causes the performance improvement visible in these results is moving less data across the NUMA interconnect.
+When the process is larger, the amount of data that needs to moved increases, reducing the possible improvement by some reduction factor $R$.
+
+\begin{figure}[H]
+    \centering
+    \resizebox{0.75\linewidth}{!}{\input{graphs/ProcessSizeImprovement}}
+    \captionsetup{width=0.75\linewidth}
+    \caption{The Effect of Process Size on the Percentage Improvement in Runtime.
+        Measuring using the simple read program sized to various process sizes, with a read size of 1M.}
+    \label{fig:ProcessSize}
+\end{figure}
+
+Reductions in runtime improvement are immediately visible with larger processes, and by a much larger reduction factor than I expected 
+(Figure \ref{fig:ProcessSize}).
+At 1G in size, runtime improvement is reduced to 2-5\% for files larger than 1 GB
+and no improvement is visible with a 1 GB file and a process of the same size.
+Regardless of where it runs, a program that has 1 GB in memory and reads a 1 GB file stored on another NUMA node
+must still move 1 GB of data across the interconnect regardless of whether Task Migration is enabled.
+This aspect of the model was correct, but the prediction for smaller processes was not.
+Smaller process sizes do slowly regain the performance improvement that was visible in the earlier tests,
+as they get smaller, but do so much more slowly than expected, indicating that the reduction factor is quite high.
+(Figure \ref{fig:smallresults}).
+This performance improvement is also highly variable across test runs, resulting in a graph that is difficult
+to make definitive conclusions about.
+This is likely due to the loop over the large memory area that had to be added to the program in order to
+ensure it would not remove it as unnecessary when compiled (Listing \ref{lst:simpleread}, line 39).
+
+\section{Impact of Read Size}
+\label{chapter:readsizeimpact}
+The size of the process is not the only factor in determining how the runtime of the process will be affected by task migration.
+Another important factor is the size of the individual file reads that the process uses to sequentially read through it.
+
+\begin{figure}[H]
+    \centering
+    \resizebox{0.75\linewidth}{!}{\input{graphs/ReadSizeImprovement}}
+    \captionsetup{width=0.75\linewidth}
+    \caption{Impact of Read Size}
+    \label{fig:readsize}
+\end{figure}
+
+Performance improvement from this prototype only occurs when a program reads 128 KB or more at a time (Figure \ref{fig:readsize}).
+This seems to indicate that the ARC or some layer below it may be handling read sizes of 
+less than one block differently than those reading one block or larger.
+Once at this read size the performance improvement increases to the 10-15\% threshold which is the maximum possible
+as shown by previous testing (Figure \ref{fig:OldZFS}).
+
+When reading 1-2 MB at a time, there appears to be a peak where significantly more performance is regained 
+(Figure \ref{fig:readsize}).
+This ideal case seems to be caused by prefetching within ZFS, which does not consider any reads that are above 1 MB
+\cite[{module/zfs/dmu\_zfetch.c}]{zfs}.
+Within the DMU, all reads smaller than this are tracked and organized into sequential streams in order to predict
+what reads will happen next and ensure that the next blocks in a sequential read are already available 
+(Section \ref{chapter:prefetch}).
+This prefetching code seems to be a bottleneck in the ZFS code for sequential reads,
+as it does a significant amount of accounting around every read operation in order to detect sequences.
+However, it only calls \texttt{arc\_read} from the context of the original read 
+on blocks it detects will be next in the sequence in order to load them into the ARC.
+Thus, this is simply a property of ZFS itself and not related to my changes, though it is an interesting result.
+
+\chapter{Conclusion}
+
+As this work has shown, Non-Uniform Memory Access has a significant impact on ZFS,
+a filesystem that has significant in memory caches to speed up operations.
+While reading files from memory is still significantly faster than reading them from disk,
+ensuring that programs and files end up on the same NUMA node provides significant improvements to read latency and bandwidth.
+In an attempt to improve ZFS's performance in these situations, 
+I have prototyped one way to reduce accesses to ARC data stored on a different node.
+This solution requires invalidating CPU caches by moving a process to a CPU on a different
+NUMA node, but it does provide a performance improvement when the files being read are very large, over 1 GB,
+and they are being read in large amounts at a time, over 128K.
+Because a process is often smaller than the files that it is reading, moving the process instead of its memory 
+can reduce the amount of memory moving across the interconnect, limiting the latency impact.
+
+While NUMA balancing is a known approach already implemented in the Linux kernel to mitigate this problem for a process's
+own memory, it does not consider external caches that the program accesses such as the ARC in ZFS.
+Task migration is an alternative solution that may provide some benefit in very specific situations,
+especially when the amount of memory being accessed is very large and the process's other memory allocations are very small.
+Future research will determine if these two approaches can work together to improve the performance of a system.
+NUMA balancing, if applied to the ARC as well, would likely show very similar results to those presented in this work.
+
+These results should not be taken as proof that task migration is always the better approach.
+For situations like the ones tested in this work, with large in-memory structures, 
+it may be valuable for operating systems to consider the relative size of a process and the memory it believes that process will
+access from another node before deciding which to move when it finds a program accessing large amount of memory from a different
+NUMA node. 
+
+Another important contribution of this work is to show that there is much room for improvement in large in-memory caches such as
+the ARC when it comes to NUMA.
+While ZFS does take NUMA into account when first placing data into the ARC, it is clear that there is still much more that could be done 
+for later processes reading this data who might not be on the same node, as my performance measurements of ZFS have shown.
+As the large systems that have necessitated a NUMA architecture are also the kinds of systems where a filesystem like ZFS is often
+used to store large amounts of data, this improvement would be beneficial for many of its users.
+
+\section{Future Work}
+
+\subsection{Read Size Limitations}
+The impact of read size (Figure \ref{fig:readsize}) is an unfortunate wrinkle in otherwise very promising results.
+The impact of NUMA on smaller read sizes seems more limited than with larger sizes, so this may in fact be a reflection of the limited
+gains that can be made with smaller read sizes.
+As discussed previously, the inflection point at 128 KB would suggest that the ARC is handling reads smaller than one block differently,
+as 128K is the default maximum block size (Section \ref{chapter:readsizeimpact}).
+Also the 1 MB inflection point for best improvement overlapping with the point at which the prefetcher is disabled indicates that
+its behavior needs to be taken into account and likely modified.
+Like the ARC, the prefetcher likely needs to be aware of which NUMA node the program accessing a particular file is running
+on and work to allocate ARC memory closest to that program.
+
+\subsection{Impact on Arbitrary Programs on Long-Running Systems}
+The testing environment for these improvements has been, by necessity, rather academic in order to eliminate the influence of other factors.
+However, no one reboots these machines every time they need to run a program, and so testing this against arbitrary programs with 
+an ARC of a long-running system would be useful future work to prove or disprove whether it can improve real-world application
+run times without impacting other programs on the system too much.
+It may be that micro-managing the scheduler in this way leads to unbalanced systems over time,
+as programs that access the same files are all forced to run on the same node.
+
+The impact of this management style may also be positive, as the scheduler has no knowledge of NUMA memory accesses, 
+and might schedule applications poorly when they are frequently requesting data from another node.
+As Megiddo and Modha write in their original paper on the ARC, ``real-life workloads possess a great deal of
+richness and variation, and do not admit a one-size-fits-all characterization'' \cite{megiddo_dharmendra_ARC}.
+
+\subsection{Interactions with NUMA Balancing and Swapping}
+The current prototype implementation assumes blocks don't move in memory, 
+which may not be the case when NUMA balancing is enabled, or when swapping occurs.
+Retrieving the exact location of the physical buffer before checking it against the current node would partially relieve these issues, 
+but it does not solve the problem of potentially splitting a buffer across multiple nodes, which would require handling
+each buffer of an ABD separately when considering whether to move a process.
+
+This could be partially handled by locating the page of ARC header's physical buffer at read time, but doing in the standard read code path is likely to be a very expensive operation 
+that could reduce the amount of possible improvement by taking significantly more time just to determine this information.
+This approach would allow NUMA balancing to be re-enabled and work with task migration.
+
+\subsection{More Complex NUMA Topologies}
+Due to only having access to one system with Non-Uniform Memory Access, it is difficult to make 
+
+\subsection{Applicability to More General File Caching Systems}
+The general idea of an in-memory cache is a common feature of filesystems, with most on Linux using the page cache.
+The Linux page cache uses two CLOCK lists that approximate two LRU caches, one for pages accessed once,
+and another for pages accessed multiple times.
+While this approach appears superficially similar to the ARC, it does not have the dynamically resizing capabilities of
+the ARC that allow it to learn from past cache misses through a ghost cache (Section \ref{chapter:ARC}).
+While the ARC is a smarter caching system, the page cache operates with the same general principles,
+and so the ideas presented here may be just as applicable to the page cache.
+
+\subsection{Global View of the ARC and of Files}
+The current implementation is greedy, considering only one block at a time and believing every block to be equally important, an equal indicator that a process is going to read an entire file.
+It also does not consider the size of the file when deciding to move a process,
+which results have shown is a critical factor in whether moving a process is actually helpful.
+
+With input from the prefetching code, it could be made smarter, 
+only moving a process after it shows itself to be likely to read most of a file.
+However, waiting for a certain amount of access also guarantees that those first few accesses are going to be high latency if from a remote node, and might reduce the impact of this improvement on overall average latency and runtime.
+
+The ARC is specifically designed to be concerned only about blocks, and leaves the higher level concepts of
+files to the layers above it, specifically the DMU and ZPL.
+Thus the process migration decision really should be happening at one of these higher levels,
+probably the DMU as that is where prefetching happens.
+However, ensuring that the DMU knows where the data it's getting from the ARC is would likely be difficult,
+as the DMU is designed to know very little about how the ARC operates, with good reason as it is a clear
+abstraction on top of a complex caching layer.
+
+

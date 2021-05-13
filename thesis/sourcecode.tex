@@ -1,0 +1,27 @@
+\chapter{Source Code}
+\label{sourcecode}
+
+\section{Automatic Testing Code}
+\singlespacing
+\lstinputlisting[caption={Automatic Testing Python Script},label={lst:autotest},language=Python]{code/autotest.py}
+
+\lstinputlisting[caption={Automatic Testing rc.local},label={lst:rc.local},language=sh]{code/rc.local}
+
+\lstinputlisting[caption={Simple Read Test Script},label={lst:simplereadtest},language=sh]{code/simpleread.sh}
+
+\lstinputlisting[caption={Fio Test Script},label={lst:fiotest},language=sh]{code/fio.sh}
+
+\lstinputlisting[caption={Simple Read Program},label={lst:simpleread},language=C]{code/simpleread.c}
+
+\section{Linux Changes}
+
+\lstinputlisting[caption={Linux Kernel Patch to export do\_migrate\_pages, tested against version 5.4.65},label={lst:linuxpatch},language=diff]{code/linux.patch}
+
+\section{ZFS Changes}
+\lstinputlisting[caption={SPL Migrate, module/spl/spl-migrate.c, for ZFS 0.8.5},label={lst:splmigrate},language=C]{code/spl-migrate.c}
+
+\lstinputlisting[caption={ARC Patch for ZFS 0.8.5},label={lst:arcpatch}, language=diff]{code/arc.patch}
+
+\lstinputlisting[caption={ZFS Header and Makefile Changes, for ZFS 0.8.5},label={lst:headermake},language=diff]{code/headermake.patch}
+
+\doublespacing

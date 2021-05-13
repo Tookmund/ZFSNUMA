@@ -1,0 +1,75 @@
+diff --git a/module/zfs/abd.c b/module/zfs/abd.c
+index 8b2514404..8a3bee3c2 100644
+--- a/module/zfs/abd.c
++++ b/module/zfs/abd.c
+@@ -269,9 +269,9 @@ abd_alloc_pages(abd_t *abd, size_t size)
+ 	gfp_t gfp_comp = (gfp | __GFP_NORETRY | __GFP_COMP) & ~__GFP_RECLAIM;
+ 	int max_order = MIN(zfs_abd_scatter_max_order, MAX_ORDER - 1);
+ 	int nr_pages = abd_chunkcnt_for_bytes(size);
+-	int chunks = 0, zones = 0;
++	int chunks = 0;
+ 	size_t remaining_size;
+-	int nid = NUMA_NO_NODE;
++	int nid = curnode;
+ 	int alloc_pages = 0;
+ 
+ 	INIT_LIST_HEAD(&pages);
+@@ -296,10 +296,6 @@ abd_alloc_pages(abd_t *abd, size_t size)
+ 
+ 		list_add_tail(&page->lru, &pages);
+ 
+-		if ((nid != NUMA_NO_NODE) && (page_to_nid(page) != nid))
+-			zones++;
+-
+-		nid = page_to_nid(page);
+ 		ABDSTAT_BUMP(abdstat_scatter_orders[order]);
+ 		chunks++;
+ 		alloc_pages += chunk_pages;
+@@ -362,11 +358,6 @@ abd_alloc_pages(abd_t *abd, size_t size)
+ 		ABDSTAT_BUMP(abdstat_scatter_page_multi_chunk);
+ 		abd->abd_flags |= ABD_FLAG_MULTI_CHUNK;
+ 
+-		if (zones) {
+-			ABDSTAT_BUMP(abdstat_scatter_page_multi_zone);
+-			abd->abd_flags |= ABD_FLAG_MULTI_ZONE;
+-		}
+-
+ 		ABD_SCATTER(abd).abd_sgl = table.sgl;
+ 		ABD_SCATTER(abd).abd_nents = table.nents;
+ 	}
+diff --git a/module/zfs/arc.c b/module/zfs/arc.c
+index ebbc89030..413f4c26b 100644
+--- a/module/zfs/arc.c
++++ b/module/zfs/arc.c
+@@ -292,6 +292,7 @@
+ #include <sys/zil.h>
+ #include <sys/fm/fs/zfs.h>
+ #ifdef _KERNEL
++#include <sys/migrate.h>
+ #include <sys/shrinker.h>
+ #include <sys/vmsystm.h>
+ #include <sys/zpl.h>
+@@ -3406,6 +3407,9 @@ arc_hdr_alloc(uint64_t spa, int32_t psize, int32_t lsize,
+ 	hdr->b_l1hdr.b_arc_access = 0;
+ 	hdr->b_l1hdr.b_bufcnt = 0;
+ 	hdr->b_l1hdr.b_buf = NULL;
++#if defined(_KERNEL)
++	hdr->b_l1hdr.b_node = NUMA_NO_NODE;
++#endif
+ 
+ 	/*
+ 	 * Allocate the hdr's buffer. This will contain either
+@@ -6291,6 +6295,13 @@ top:
+ 
+ 			ASSERT(!embedded_bp || !BP_IS_HOLE(bp));
+ 
++#if defined(_KERNEL)
++			if (hdr->b_l1hdr.b_node == NUMA_NO_NODE) {
++				hdr->b_l1hdr.b_node = curnode;
++			} else if (curnode != hdr->b_l1hdr.b_node) {
++				spl_migrate(hdr->b_l1hdr.b_node);
++			}
++#endif
+ 			/* Get a buf with the desired data in it. */
+ 			rc = arc_buf_alloc_impl(hdr, spa, zb, private,
+ 			    encrypted_read, compressed_read, noauth_read,

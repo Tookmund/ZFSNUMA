@@ -1,0 +1,8 @@
+#!/bin/sh
+
+LOGDIR=/var/log/autoarctest
+mkdir -p "$LOGDIR"
+sleep 30
+LOGFILE="$LOGDIR/$(date --iso-8601=seconds).log"
+/home/jaadams/arctest/autoarctest/autotest.py > "$LOGFILE" 2>&1 \
+	|| sendmessage.sh "$(printf "Test Run Error:\n%s" "$(tail "$LOGFILE")")"

@@ -1,0 +1,30 @@
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+
+\lstset{frame=tb,
+  upquote=true,
+  captionpos=b,
+  language=Python,
+  aboveskip=3mm,
+  belowskip=3mm,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle={\small\ttfamily},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen},
+  stringstyle=\color{red},
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=4
+}
+
+% https://tex.stackexchange.com/a/106129
+% https://tex.stackexchange.com/a/50263
+  \lstdefinelanguage{diff}{
+    morecomment=[f][\color{blue}]{@@},
+    morecomment=[f][\color{dkgreen}]{+},
+    morecomment=[f][\color{red}]{-},
+  }
+
+

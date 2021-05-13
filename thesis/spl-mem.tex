@@ -1,0 +1,49 @@
+\chapter{Low-Level Memory Allocation in the SPL}
+My initial research into ZFS led me to dive into the very low level details of how memory allocation
+works in ZFS, as it is actually rather different from how memory allocation works in other Linux kernel modules.
+My attempts to make these memory allocations more NUMA-aware had a substantially negative effect on the performance of ZFS.
+This is likely because I had to substantially constrain the scheduling of the memory allocation threads.
+I ended up taking my project in an entirely different direction after this, and thus these details of how this part of 
+ZFS works are mostly irrelevant to my work, so I have confined it to this appendix.
+
+\subsection{kmem}
+The SPL contains a wrapper on kmem alloc and free, which attempts to emulate a more Solaris-like allocation process for small allocations,
+preventing them from failing, and instead retrying repeatedly until it succeeds
+\cite[{module/spl/spl-kmem.c}]{zfs}.
+It also includes debug functions to track memory allocations and find memory leaks.
+These functions call the per-NUMA node \texttt{kmalloc\_node}, but with no NUMA node preference, 
+and no such option exposed to the ZFS module to control its allocations.
+However, this function respects the calling thread's memory policy, which defaults to preferring allocations from the local NUMA node.
+
+For larger allocations, ZFS uses \texttt{vmem\_alloc} to allocate chunks of virtual memory, which uses Linux's \texttt{\_\_vmalloc} pretty much directly, 
+and again uses a loop to prevent failure, which the code claims is unlikely with \texttt{\_\_vmalloc} \cite[{module/spl/spl-kmem.c}]{zfs}.
+
+\subsection{SLAB Allocator}
+The SPL also implements it own slab allocator for  \texttt{kmem\_cache}, instead of just providing a wrapper as it does for other kinds of memory 
+allocation \cite[{module/spl/spl-kmem-cache.c}]{zfs}. 
+This allows it to diverge significantly from the Linux implementation.
+Unlike the Linux implementation, which, according to the comments in spl-kmem-cache was inspired by Solaris' version, it supports destructors for cache
+objects (which have been removed from Linux), and bases its allocations on virtual addresses, removing the need for large chunks of contiguous memory
+when large allocations are requested (when objects smaller than 16KB are requested, it falls back to the Linux slab allocator).
+It also implements cache expiration, returning objects that have not been accessed in a few seconds back to the cache 
+(Linux used to only do so in the case of a memory shortage, though it now has expiration after 2 seconds \cite{lameter_slab_2014}).
+Finally, the SPL slab allocator implements a optimization known as a ``cache magazine.''
+These retain a per-cpu cache of recently-freed objects, which can be reused without locking.
+
+Internally, the slab allocator supports using Linux's \texttt{\_\_get\_free\_pages} with some specific flags, 
+but does not use it except in deadlock situations, instead preferring \texttt{\_\_vmalloc} to allocate objects in virtual memory.
+It also uses an SPL task queue for handling memory allocation and cache expiration.
+
+While kmalloc\_node can be used to enforce memory node binding, there is no direct way to influence \texttt{\_\_get\_free\_pages}
+or \texttt{\_\_vmalloc}.
+However, both functions respect the current thread's memory policy.
+\texttt{\_\_vmalloc} technically has a similar function, \texttt{\_\_vmalloc\_node}, but this symbol is not exported to modules \cite[{mm/vmalloc.c}]{linux}.
+It seems that ZFS is using this function in an unusual way, allocating memory from the HIGHMEM zone, while the expected use of the function, per the
+more standard (and exported) \texttt{vmalloc} and \texttt{vmalloc\_node} functions, allocates from the NORMAL zone, and the comment above the function states 
+``Any use of gfp flags outside of [the NORMAL zone] should be consulted with [memory management] people.'' \cite[{mm/vmalloc.c}]{linux}.
+In newer versions of Linux \texttt{\_\_vmalloc\_node} is exported but only with a specific testing configuration that regular kernels are unlikely to use
+\cite{newlinux}.
+
+Due to the nature of a slab allocator, which subdivides large memory allocations for smaller objects,
+relying on memory policy is not enough.
+Linux's slab allocator was made NUMA-aware by having per-node and per-cpu lists, though this leads to a large increase in memory usage by this

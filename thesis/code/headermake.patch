@@ -1,0 +1,75 @@
+diff --git a/include/spl/sys/migrate.h b/include/spl/sys/migrate.h
+new file mode 100644
+index 000000000..8d1301f17
+--- /dev/null
++++ b/include/spl/sys/migrate.h
+@@ -0,0 +1,32 @@
++/*
++ *  Copyright (C) 2021 Jacob Adams
++ *
++ *  This file is part of the SPL, Solaris Porting Layer.
++ *  For details, see <http://zfsonlinux.org/>.
++ *
++ *  The SPL is free software; you can redistribute it and/or modify it
++ *  under the terms of the GNU General Public License as published by the
++ *  Free Software Foundation; either version 2 of the License, or (at your
++ *  option) any later version.
++ *
++ *  The SPL is distributed in the hope that it will be useful, but WITHOUT
++ *  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ *  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ *  for more details.
++ *
++ *  You should have received a copy of the GNU General Public License along
++ *  with the SPL.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#ifndef _SPL_MIGRATE_H
++#define	_SPL_MIGRATE_H
++
++#include <linux/cpuset.h>
++#include <linux/mempolicy.h>
++#include <linux/sched.h>
++#include <linux/sched/mm.h>
++#include <linux/security.h>
++
++extern void spl_migrate(int);
++
++#endif  /* _SPL_MIGRATE_H */
+diff --git a/include/spl/sys/thread.h b/include/spl/sys/thread.h
+index 3762717da..aa53f9657 100644
+--- a/include/spl/sys/thread.h
++++ b/include/spl/sys/thread.h
+@@ -54,6 +54,7 @@ typedef void (*thread_func_t)(void *);
+ #define	thread_exit()			__thread_exit()
+ #define	thread_join(t)			VERIFY(0)
+ #define	curthread			current
++#define	curnode				cpu_to_node(current->cpu)
+ #define	getcomm()			current->comm
+ #define	getpid()			current->pid
+ 
+diff --git a/include/sys/arc_impl.h b/include/sys/arc_impl.h
+index c8f551db7..9e24fe731 100644
+--- a/include/sys/arc_impl.h
++++ b/include/sys/arc_impl.h
+@@ -154,6 +154,8 @@ typedef struct l1arc_buf_hdr {
+ 	kcondvar_t		b_cv;
+ 	uint8_t			b_byteswap;
+ 
++	/* What node the ARC header/buffer was allocated on */
++	int			b_node;
+ 
+ 	/* protected by arc state mutex */
+ 	arc_state_t		*b_state;
+diff --git a/module/spl/Makefile.in b/module/spl/Makefile.in
+index e16666aa9..b6c664921 100644
+--- a/module/spl/Makefile.in
++++ b/module/spl/Makefile.in
+@@ -16,6 +16,7 @@ $(MODULE)-objs += spl-kmem.o
+ $(MODULE)-objs += spl-kmem-cache.o
+ $(MODULE)-objs += spl-kobj.o
+ $(MODULE)-objs += spl-kstat.o
++$(MODULE)-objs += spl-migrate.o
+ $(MODULE)-objs += spl-proc.o
+ $(MODULE)-objs += spl-procfs-list.o
+ $(MODULE)-objs += spl-taskq.o
