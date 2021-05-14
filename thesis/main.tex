@@ -2,8 +2,8 @@
 Data access is a critical component of modern computing and often the bottleneck of performance for many applications,
 especially as processors have continued to get faster and faster over time.
 Because data storage that is the quickest to access is also the most expensive, 
-all the data in a system cannot be available at one time equally quickly,
-and instead a hierarchy of data access was created, where the higher levels can store less data but are quicker to access and the
+all the data in a system cannot be available at one time equally quickly.
+Instead a hierarchy of data access was created, where the higher levels can store less data but are quicker to access and the
 lower levels can store more data but are slower to access.
 This fundamental principle of computing was a major consideration in the design of
 computers as long ago as 1946\cite{burks_preliminary_1946}.
@@ -35,13 +35,13 @@ promising, though limited, results.
 
 \chapter{Filesystems}
 Filesystems are a critical part of modern computing, providing long term storage of data.
-Many different filesystems exist today, including FAT\footnote{A filesystem that is still ubiquitious today, 
+Many different filesystems exist today, including FAT\footnote{A filesystem that is still ubiquitous today, 
 despite lacking any of the features that are discussed in this paper.},
 NTFS, Ext4, HFS+\footnote{NTFS, Ext4, and HFS+ are filesystems known for having journaling capabilities, 
 and are the default filesystems for Windows, Linux and MacOS respectively.
 NTFS also allowed for a major increase in the maximum size of files, which was previously limited to 4 GB on FAT.}, 
 BTRFS, and ZFS\footnote{BTRFS and ZFS are newer modern filesystems that both support generally the same set of features,
-though ZFS is known for being more stable and is the focus of this work}.
+though ZFS is well known for being more stable and is the focus of this work}.
 Some filesystems are much simpler, working with only one disk and providing only a journaling system to recover from system crashes
 or other inconsistencies.
 Others, like BTRFS and ZFS, are much more complex, allowing users to store vast amounts of data over multiple disks.
@@ -116,7 +116,7 @@ This requires some kind of corruption detection mechanism, but such a mechanism 
 \section{State Consistency}
 One goal of every filesystem is to never be in an unrecoverable state on disk
 \cite{ahrens_openzfs_basics,mckusick_zfs_2015_presentation}.
-Most filesystems handle this situation through a journal system and a filesystem check, also known as \texttt{fsck},
+Most filesystems handle this situation through a journal system and the filesystem check command, known as \texttt{fsck},
 that can restore the filesystem to a working state, even if a write is interrupted.
 Other filesystems, such as ZFS and BTRFS, try to categorically eliminate this source of failure through a Copy on Write
 model.
@@ -142,7 +142,8 @@ works much like allocating memory in a program\cite{mckusick_zfs_2015_presentati
 A storage pool can consist of multiple disks in various configurations, and all of the available storage of those disks
 can be used by any of the filesystems that are present in the pool.
 ZFS is also Copy on Write, as discussed above, which both ensures that the filesystem can never be in an inconsistent state on disk
-and allows for snapshots, as old versions can be kept around with ease by simply not deleting old blocks.
+and allows for snapshots, read-only copies of a filesystem from a given point in time, 
+as old versions can be kept around with ease by simply not deleting old blocks.
 Snapshots also only take up the extra space of their difference between the current state of the filesystem,
 as the blocks used by both are not duplicated, but instead simply pointed to by both the snapshot and live filesystem.
 
@@ -157,12 +158,11 @@ or they can be a mirror, where multiple disks contain exactly the same data,
 or a RAIDZ pool,  where data are striped across multiple disks and a parity block is appended 
 so that data can be recovered in the event of a disk failure.
 These addresses are Data Virtual Addresses, and they contain a VDEV number, a size, as blocks can be variably-sized in ZFS, 
-though they default to 128K, and an offset, the distance in bytes from the start of the logical disk
-to the start of the block.
-By default, metadata are stored twice, and pool-wide metadata are stored three times.
-However, there can only be two copies if the pool is encrypted, as encryption key information is stored in the third DVA in the block pointer. 
-Pool-wide metadata are not encrypted and thus are not affected by this limitation, even though they
-are stored three times in the pool.
+with a maximum size of 128 KB, and an offset, the distance in bytes from the start of the logical disk to the start of the block.
+By default, metadata, that is data about a particular filesystem, snapshot or other object in the storage pool, are stored twice,
+and pool-wide metadata, that is data about all of the filesystems and other objects in the storage pool, are stored three times.
+However, there can only be at most two copies if the pool is encrypted, as encryption key information is stored in the third DVA in the block pointer. 
+Pool-wide metadata are never encrypted and thus are not affected by this limitation, even though they are stored three times in the pool.
 
 \begin{figure}[H]
     \centering
@@ -175,7 +175,7 @@ are stored three times in the pool.
 The most important feature of block pointers is that they contain a 256-bit checksum of the data they point to.
 These checksums protect against failures of the initial write and allow detecting any corruption that might occur later
 when reading the data back from the disk.
-They also allow for reparing data on one side of a mirror, if the other side is uncorrupted, 
+They also allow for repairing data on one side of a mirror, if the other side is uncorrupted, 
 as its correct data can then be written from the known-good side of the mirror and the corrupted data on the first side 
 can be deleted.
 Because block pointers are addresses, but also contain a checksum, they form a hash tree, also known as a Merkel tree, of addresses and checksums
@@ -198,10 +198,10 @@ Thus each layer of the tree can validate all of the data below it.
 \end{figure}
 
 \section{ZIL}
-The ZFS Intent Log is the ZFS's journal  \cite{ahrens_read_write}.
+The ZFS Intent Log is the ZFS's journal \cite{ahrens_read_write}.
 It functions like a journal in other filesystems, ensuring synchronous writes without flushing everything to disk and 
-requiring a bunch of rewrites every time fsync is called. 
-These fsync operations are intended to force all data to be written to disk,
+requiring rewriting the entire tree of blocks every time \texttt{fsync} is called. 
+These \texttt{fsync} operations are intended to force all data to be written to disk,
 but instead on ZFS only the ZIL is synced to disk.
 This allows these operations to be fast without actually having to write all the new direct and indirect blocks to the disks,
 but ensures that all data can be recovered by ZFS in the event of sudden power loss or crash before
@@ -211,21 +211,23 @@ The ZIL is a linked list of changes made to the filesystem.
 It works around the problem of pointers in a copy-on-write filesystem, which would typically require
 changing the previous block to have a pointer to the next block,
 by adding a new empty block to the end of list any time it adds more data.
-New data is then written to the first completely invalid block that it finds, 
+New data are then written to the first completely invalid block found in the ZIL, 
 under the assumption that it is the final empty block.
-This allows it to not have to change the pointer address of previous blocks and keep ZFS's copy-on-write guarantees, 
+This allows ZFS to not have to change the pointer address of previous blocks and keep its copy-on-write guarantees, 
 never rewriting the data of already written blocks in place.
 
 When ZFS restores from power loss, it gets the last good state of the current uberblock, the root block of the storage pool,
 and then updates write by write to the last write that was synced to the ZIL \cite{mckusick_zfs_2015_presentation}.
 
 \section{Checkpoints and Snapshots}
-After a certain amount of writes to the pool accumulate, ZFS writes them out to the disks of the pool
-all at once as a checkpoint, or transaction group
+After a certain amount of writes to the pool accumulate, either 4 GB or 25\% of memory, whichever is lower 
+\cite[{module/zfs/arc.c}]{zfs},
+ZFS writes them out to the disks of the pool all at once as a checkpoint, or transaction group
 \cite{ahrens_read_write,mckusick_zfs_2015_presentation}.
 It must first collect all updates that have happened since the last checkpoint from the ZIL
 and then write them out to unused locations in the pool before finally writing a new uberblock for the entire pool.
-Uberblocks are used in a rotation as checkpoints happen, with a set of either 128 or 256, depending on the disk's physical block size.
+Uberblocks are used in a rotation as checkpoints happen, with a set of either 128 or 256, depending on the  physical block size
+of the disks in the pool.
 
 Because ZFS works on a system of checkpoints and copy-on-write storage, snapshots are trivial for the filesystem to keep around.
 It must simply save the root block of the filesystem at a given point in time.
@@ -234,7 +236,7 @@ when it is deleted.
 This is critical to do, as a block can only be freed if everything referencing it no longer needs it.
 Birth time is used to figure out if any snapshots need a particular block when ZFS is deleting a snapshot.
 The original copy-on-write filesystems used garbage collection, but this was very slow.
-ZFS instead uses a deadlist of what blocks the snapshot no longer cares about relative to the snapshot right before it.
+ZFS instead uses a dead list of what blocks the snapshot no longer cares about relative to the snapshot right before it.
 
 \section{On-Disk Structure}
 ZFS's on-disk structure starts with an uberblock, the root block for the entire pool 
@@ -245,8 +247,8 @@ and ZVOLs, large files stored in ZFS outside of a filesystem that are intended t
 ZFS treats all of these on-disk objects as sets of sets, and they are implemented through direct and indirect blocks,
 which allows these sets to be arbitrarily large (Section \ref{chapter:blocks}).
 The first object in the Meta-Object-Set is a master object set that contains information about the pool itself.
-The last is the space map, which keeps track of which blocks onare free and which are being used over the entirety of
-every disk in  the ZFS storage pool.
+The last is the space map, which keeps track of which blocks are free and which are being used over the entirety of
+every disk in the ZFS storage pool.
 Each object in the MOS is itself an object set that describes the objects within it.
 For example, filesystem objects are a set of files, directories, and symlinks, files that simply reference another file and are
 treated by most programs as exactly the same as the files they link to.
@@ -256,7 +258,7 @@ contain the data that makes up the object.
 \begin{figure}[H]
     \centering
     \resizebox{!}{0.2\textheight}{\input{diagrams/ZFSOnDiskStructure}}
-    %\captionsetup{width=0.75\linewidth}
+    \captionsetup{width=0.55\linewidth}
     \caption{On disk a ZFS pool consists of a set of object sets\cite{mckusick_zfs_2015_presentation}.
     The first layer is the Meta-Object Set, consisting of the filesystems, snapshots, and other components
     that make up the storage pool, along with essential object sets like 
@@ -268,7 +270,7 @@ contain the data that makes up the object.
 \begin{figure}[H]
     \centering
     \resizebox{!}{0.2\textheight}{\input{diagrams/ZFSOnDiskExample}}
-    %\captionsetup{width=0.75\linewidth}
+    \captionsetup{width=0.55\linewidth}
     \caption{A sample ZFS pool, with two filesystems and three snapshots \cite{mckusick_zfs_2015_presentation}.
         When the snapshot and the filesystem are identical they point to the exact same object set,
         while once they diverge the snapshot continues pointing to the same object set, which might still point to many of the same
@@ -326,15 +328,17 @@ filesystems.
 within the Linux kernel.
 All file operations within ZFS are actually organized as operations on objects, of which files are just one special type.
 Thus the ZPL must translate requests for file reads and writes into operations on specific objects in specific object sets.
+It is the initial entry point for reads and writes to files in ZFS.
 
 \subsection{ZAP}
 The ZAP is the ZFS Attribute Processor \cite{dawidek_closer_2008}. 
 It is a key-value store that is used primarily for directories, and it stores a mapping of names to objects in the object set.
+In other words, it primarily maps the names of files in a directory to the objects that hold the contents of those file.
 
 \subsection{DMU}
 The DMU is the Data Management Unit \cite{ahrens_read_write}. 
-Its primary job is to bundle operations into transactions, and hold the first layer of caching for the filesystem as a set of dbuf objects. 
-These dbuf objects are just metadata that points to data stored in the ARC, to avoid even having to ask the ARC for frequently accessed data.
+Its primary job is to bundle operations into transactions, and hold the first layer of caching for the filesystem as a set of DBUF objects. 
+These DBUF objects are just metadata that points to data stored in the ARC, to avoid even having to ask the ARC for frequently accessed data.
 
 \subsection{ARC}
 The Adaptive Replacement Cache is ZFS's large in-memory cache \cite{ahrens_openzfs_basics, ahrens_read_write}.
@@ -357,6 +361,7 @@ The ZIO scheduler considers five classes of I/O, prioritized in this order: sync
 A read operation to a filesystem in ZFS goes through almost every part of the filesystem and gives a good overview of how
 ZFS works.
 It is also the operation that this work focuses on improving.
+Describing the process as it currently exists is critical to showing how it may be improved.
 Each snapshot, filesystem, or clone has its own ZPL and DMU, but the ARC and SPA are shared per storage pool 
 \cite{ahrens_read_write}.
 
@@ -490,7 +495,7 @@ The relative size of these two caches is determined by a ghost cache.
 The ghost cache contains the headers, but not the data, of all the recently evicted blocks
 along with which part of the cache they were stored in.
 When a cache miss occurs in the ARC, it checks the ghost cache to see if the data requested was recently stored.
-If it was, then the ARC will make the component of the cache that data was previous stored in larger and the other smaller,
+If it was, then the ARC will make the component of the cache that data was previously stored in larger and the other smaller,
 under the assumption that this would have helped the ARC perform better and have fewer cache misses.
 
 This combination of multiple cache types gives the ARC the important advantage of being scan-resistant,
@@ -519,18 +524,18 @@ stored in the ARC.
 These header structures point to a set of buffer structures, which themselves point to ABD, ARC Buffer Data, structures
 containing the actual data.
 The first and most important of these buffers is the physical buffer, the ABD that contains the contents of the physical block on disk.
-Every header that is in the L1 ARC will have at least this buffer, though it is freed when the header moves to the ghost cache.
+Every header that is in the L1ARC will have at least this buffer, though it is freed when the header moves to the ghost cache.
 
 Every time a block is requested from the ARC by a new consumer, a new entry is added to the consumer list, 
 called the buf list within the ARC, with its own data pointer to an ABD containing the requested data.
 A consumer is a higher level component of ZFS, such as a particular filesystem's DMU, 
 that needs to retrieve the data pointed to by a block pointer.
-This consumer buf structure is what the consumer receives back from the ARC when its data is available.
+The buffer attached to this consumer buf structure is what the consumer receives back from the ARC when its data is available.
 
 What the ABD that the buf structure points to looks like depends on what the block's data actually looks like on disk.
-If the block requested is compressed or encrypted, than the ARC will need to allocate a new ABD to store the uncompressed data,
+If the block requested is compressed or encrypted, than the ARC will need to allocate a new buffer to store the uncompressed data,
 which will then to pointed to by the new buf structure before it is returned to the consumer.
-If the data on disk is not compressed or encrypted, then the buf structure will just point to the physical ABD of the header,
+If the data on disk are not compressed or encrypted, then the buf structure will just point to the physical ABD of the header,
 as no changes are needed in order for it to be used by the consumer.
 
 \subsection{ARC Buffer Data}
@@ -553,7 +558,7 @@ regardless of whether they are close to the current process.
 This behavior is clever, but undesirable for the purposes of this project, as it means that larger allocations
 can be spread out over multiple areas, depending on the available memory.
 
-\subsection{Memory and the ARC}F
+\subsection{Memory and the ARC}
 The ARC requires large amounts of memory, but gives ZFS comparable or even faster performance than other filesystems in some 
 circumstances.
 However, this also means that ZFS is significantly affected by memory latency, more so than other filesystems, because they don't typically 
@@ -603,7 +608,7 @@ A processor and its attached memory are together known as a node.
 
 \section{Measuring the Impact of NUMA}
 \label{chapter:measuringnuma}
-Tools such as the STREAM benchmark, used to measure the bandwidth of memory based on the throughput of various operations
+Tools such as the STREAM benchmark can be used to measure the bandwidth of memory based on the throughput of various operations
 performed on memory \cite{bergstrom_stream}.
 While originally used to measure CPU performance, ``On modern hardware, each of these tests achieve similar bandwidth,
 as memory is the primary constraint, not floating-point execution'' \cite{bergstrom_stream}.
@@ -620,8 +625,8 @@ Using this tool in my test environment, I found that there was about a 63\% incr
 Thus, there is a significant performance impact from NUMA, to both memory bandwidth and memory latency.
 
 \section{Linux and NUMA}
-The most important place for NUMA support is of course the operating system, and it has been supported in Linux since 2.5, with the current system
-of APIs and scheduler support added in version 2.6 \cite{dobson_linux_numa}
+The most important place for NUMA support is of course the operating system, and it has been supported in Linux since version 2.5,
+with the current system of APIs and scheduler support added in version 2.6 \cite{dobson_linux_numa}
 \cite[{Documentation/admin-guide/mm/numa\_memory\_policy.rst}]{linux}.
 There are two main ways in which the operating system has to support NUMA. First, in memory allocation, so that a process can ask for memory from
 a specific node, and in the scheduler, so that a process can be kept on the socket closest to the memory that it uses.
@@ -634,12 +639,13 @@ or binding all memory allocated to a specific node, such that the process would 
 from a specific node.
 Memory in Linux is allocated on a first touch policy, that is the process or thread that first accesses the memory determines the policy used to decide
 where that particular allocation will be located.
-As an example, if two threads had a local memory policy and one thread running on node 0 were to allocate some memory, but another thread running on a node 1 were to actually write to that
-memory, that allocation would be placed closest to the second thread on node 1.
+As an example, if two threads had a local memory policy and one thread running on node 0 were to allocate some memory,
+but another thread running on a node 1 were to be the first to actually write to that memory,
+that allocation would be placed closest to the second thread on node 1.
 
 \section{Scheduling}
 Linux's scheduler is also aware of NUMA \cite[{Documentation/scheduler/sched-domains.txt}]{linux}.
-This allows it to attempt to keep processes within the same NUMA node.
+This allows it to attempt to keep processes running on the same NUMA node.
 It uses a hierarchy of scheduling domains, which the scheduler tries to keep a process within while still balancing all running processes across
 all available processors. 
 These include not only the same NUMA node, but also the same physical CPU core or even the same virtual processor when possible.
@@ -680,12 +686,11 @@ any particular test run, but instead are consistent and repeatable.
 \subsection{Automatic Testing}
 To guarantee a clean test environment, the machine was rebooted between each test.
 However, the machine used for testing took around 10 minutes to reboot, so manually running multiple tests in a row
-quickly became very tedious.
-
-In order to run many tests in a row, I wrote a collection of scripts in Python 3 and Bash 
+quickly became very tedious. In order to run many tests in a row without human intervention,
+I wrote a collection of scripts in Python 3 and Bash 
 to measure the differences between file accesses on different nodes.
 Each test run was started by an \texttt{rc.local} script that would run on each boot.
-This script would trigger \texttt{autotest.py}, which would then look for new tests to be run based on 
+This script would run \texttt{autotest.py}, which would then look for new tests to be run based on 
 the file names within the test-run folder.
 The name of each test run would inform the script which version of ZFS needed to be loaded,
 either a modified version, or a standard release version of ZFS to compare against,
@@ -701,13 +706,7 @@ of various sizes, which were then used to test the performance of reading files 
 The \texttt{numactl} program was used to control which processors the test program ran on, as it allows you to set what nodes a program is permitted
 to run on before executing it.
 
-\begin{figure}
-    \centering
-    \resizebox{!}{0.6\textheight}{\input{diagrams/TestingFlowChart}}
-    \captionsetup{width=0.75\linewidth}
-    \caption{A flowchart of how automatic testing worked.}
-    \label{fig:testflowchart}
-\end{figure}
+
 
 Either fio\cite{fio} or simpleread (Listing \ref{lst:simplereadinline}) was used as the test program, 
 with fio measuring itself and simpleread timed by the time command.
@@ -718,6 +717,14 @@ I simply used its sequential read capabilities with known files on my test ZFS f
 latency and bandwidth, as fio accurately times each individual read operation in order to calculate its statistics.
 Through these measurements it can calculate various percentiles of latency and also read bandwidth. 
 These metrics were invaluable for detecting differences in read operations between my prototype and normal ZFS.
+
+\begin{figure}[H]
+    \centering
+    \resizebox{!}{0.6\textheight}{\input{diagrams/TestingFlowChart}}
+    \captionsetup{width=0.75\linewidth}
+    \caption{A flowchart of how automatic testing worked.}
+    \label{fig:testflowchart}
+\end{figure}
 
 \section{Demonstrating the Effects}
 As a direct demonstration of the effects of NUMA on ZFS, consider this simple file-reading program (Listing \ref{lst:simplereadinline}).
@@ -809,7 +816,7 @@ as the read latency never improves and is always higher than a read from the sam
     \label{fig:100NUMABalance}
 \end{figure}
 
-Investigating the Linux NUMA balancing code confirms what this graph show by experimentation, that ARC memory is not considered
+Investigating the Linux NUMA balancing code confirms what this graph show by experimentation, that ARC memory is not considered.
 Only memory that is part of a specific process is considered and even then only after that process has been running for one full second
 \cite[{kernel/sched/fair.c}]{linux}.
 
@@ -1297,10 +1304,18 @@ each buffer of an ABD separately when considering whether to move a process.
 
 This could be partially handled by locating the page of ARC header's physical buffer at read time, but doing in the standard read code path is likely to be a very expensive operation 
 that could reduce the amount of possible improvement by taking significantly more time just to determine this information.
-This approach would allow NUMA balancing to be re-enabled and work with task migration.
+This approach would allow NUMA balancing to be re-enabled and work with task migration, though more changes would also need to be made
+to allow NUMA balancing to consider ARC pages as well.
 
 \subsection{More Complex NUMA Topologies}
-Due to only having access to one system with Non-Uniform Memory Access, it is difficult to make 
+Due to only having access to one system with Non-Uniform Memory Access, it is difficult to make statements about how these
+changes might affect systems with more NUMA nodes and different interconnect latencies.
+Systems that have higher interconnect latencies between their nodes will probably see larger improvements from these changes,
+while systems with lower interconnect latency will probably see less improvement.
+I would expect this general principle to hold no matter how many NUMA nodes a system has, but actually testing it may show different results.
+For example, there may be more contention on the interconnect with more NUMA nodes, which could affect latency in measurable ways.
+Thus comparing the results I saw in my testing with results from systems with more complex topologies could provide interesting insight
+on the impact of this added complexity on the system's memory latency.
 
 \subsection{Applicability to More General File Caching Systems}
 The general idea of an in-memory cache is a common feature of filesystems, with most on Linux using the page cache.
